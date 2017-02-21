@@ -11,6 +11,8 @@ turtles-own [
   capacity
   speed
   health
+  transportState
+  homeDistance
 ]
 
 patches-own [
@@ -19,12 +21,39 @@ patches-own [
   currentCapacity
   maxCapacity
   traversable
+  trackDensity
+  plantDistance
 ]
+
+to compute-manhattan-distances
+  create-turtles 1 [
+    setxy 0 0
+    set homeDistance 0
+  ]
+  repeat 100 [ compute-manhattan-distance-one-step ]
+end
+
+to compute-manhattan-distance-one-step
+  ask turtles [
+    set plantDistance homeDistance
+    let nextDistance homeDistance + 1
+    let patchesToVisit neighbors4 with [ traversable = 1 and plantDistance = -1 ]
+    ask patchesToVisit [
+      sprout 1 [
+        set homeDistance nextDistance
+      ]
+    ]
+    die
+  ]
+end
+
+
 
 to setup
   clear-all
   setup-gis
   setup-patches
+  compute-manhattan-distances
   setup-turtles
   reset-ticks
 end
@@ -55,11 +84,15 @@ to setup-patches
 ;  create roads
   ask patches with [ pcolor = gray ] [
     set traversable 1
+    set trackDensity 0
+    set plantDistance -1
   ]
 ;  create farms
   ask n-of number-of-farms patches with [ pcolor = gray and pxcor != 0 and pycor != 0 ] [
     set pcolor green
     set traversable 1
+    set trackDensity 0
+    set plantDistance -1
   ]
 ;  create plant
   ask patch 0 0 [
@@ -67,6 +100,8 @@ to setup-patches
     set currentCapacity 0
     set maxCapacity 100
     set traversable 1
+    set trackDensity 0
+    set plantDistance distancexy 0 0
   ]
 end
 
@@ -80,23 +115,33 @@ to setup-turtles
 ;    new truck moves at random speed
     set speed 1
     set health 100
+    set transportState 0
   ]
 end
 
 to move-turtles
   ask turtles [
-    ifelse [ traversable ] of patch-ahead 1 = 1 [
-      forward speed
-    ]
-    [
-      let dir random-float 1
-      ifelse dir > 0.5 [
-        if not look-left [ if not look-right [ go-back ] ]
-      ] [
-        if not look-right [ if not look-left [ go-back ] ]
-      ]
+    set trackDensity trackDensity + 1
+    ifelse transportState = 0 [
+      head-out
+    ] [
+      head-home
     ]
   ]
+end
+
+to head-out
+  let p min-one-of neighbors4 with [ traversable = 1 ] [ trackDensity ]
+  if [ trackDensity ] of p < trackDensity [
+    face p
+    move-to p
+  ]
+end
+
+to head-home
+  let p min-one-of neighbors4 with [ traversable = 1 ] [ plantDistance ]
+  face p
+  move-to p
 end
 
 to go-back
@@ -140,10 +185,10 @@ to pick-up-loads
       set farmCapital farmCapital + 1
     ]
 ;    trucks at full capacity turn red
-    ifelse capacity = 5 [ set color red ] [ set color blue ]
-;    if capacity = 5 and oldCapacity = 4 [
-;      face one-of patches with [ pcolor = red ]
-;    ]
+    ifelse capacity = 5 [
+      set color red
+      set transportState 1
+    ] [ set color blue ]
   ]
 end
 
@@ -154,7 +199,10 @@ to drop-off-loads
 ;      palm oil in trucks processed and converted to revenue
       ask one-of patches with [ pcolor = red ] [
         if currentCapacity <= maxCapacity - 5 [
-          ask myself [ set  capacity capacity - 5 ]
+          ask myself [
+            set  capacity capacity - 5
+            set transportState 0
+          ]
           set currentCapacity currentCapacity + 5
         ]
       ]
@@ -193,6 +241,7 @@ to buy-trucks
         set color blue
         setxy 0 0
         set health 100
+        set transportState 0
 ;        new trucks move at random speed
         set speed random-float 1
 ;        new trucks randomly move east or west
@@ -233,8 +282,8 @@ end
 GRAPHICS-WINDOW
 477
 189
-832
-545
+795
+508
 -1
 -1
 10.0
@@ -420,7 +469,7 @@ SLIDER
 30
 80
 202
-114
+113
 max-trucks
 max-trucks
 100
@@ -435,12 +484,12 @@ SLIDER
 28
 242
 201
-276
+275
 number-of-farms
 number-of-farms
 0
 150
-80.0
+10.0
 10
 1
 NIL
