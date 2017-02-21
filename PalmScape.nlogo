@@ -1,7 +1,10 @@
+extensions [ gis ]
+
 globals [
   revenue
   cost
   profit
+  roads-dataset
 ]
 
 turtles-own [
@@ -15,10 +18,12 @@ patches-own [
   farmCapital
   currentCapacity
   maxCapacity
+  traversable
 ]
 
 to setup
   clear-all
+  setup-gis
   setup-patches
   setup-turtles
   reset-ticks
@@ -39,22 +44,30 @@ to go
   tick
 end
 
+to setup-gis
+  let extent gis:load-dataset "C:/Users/user/Downloads/ke_major-roads/ke_major-roads.shp"
+  gis:set-world-envelope gis:envelope-of extent
+  set roads-dataset gis:load-dataset "C:/Users/user/Downloads/ke_major-roads/ke_major-roads.shp"
+  ask patches gis:intersecting roads-dataset [ set pcolor gray ]
+end
+
 to setup-patches
-;  create road
-  ask patches [
-    if pycor = 0 [ set pcolor white ]
+;  create roads
+  ask patches with [ pcolor = gray ] [
+    set traversable 1
   ]
 ;  create farms
-  ask n-of 5 patches with [ pycor = 0 ] [
+  ask n-of number-of-farms patches with [ pcolor = gray and pxcor != 0 and pycor != 0 ] [
     set pcolor green
+    set traversable 1
   ]
 ;  create plant
   ask patch 0 0 [
     set pcolor red
     set currentCapacity 0
     set maxCapacity 100
+    set traversable 1
   ]
-
 end
 
 to setup-turtles
@@ -63,7 +76,7 @@ to setup-turtles
   create-turtles 1 [
     set color blue
     setxy 0 0
-    set heading 90
+    set heading 0
 ;    new truck moves at random speed
     set speed 1
     set health 100
@@ -72,9 +85,41 @@ end
 
 to move-turtles
   ask turtles [
+    ifelse [ traversable ] of patch-ahead 1 = 1 [
+      forward speed
+    ]
+    [
+      let dir random-float 1
+      ifelse dir > 0.5 [
+        if not look-left [ if not look-right [ go-back ] ]
+      ] [
+        if not look-right [ if not look-left [ go-back ] ]
+      ]
+    ]
+  ]
+end
+
+to go-back
+  set heading ( heading + 180 )
+end
+
+to-report look-left
+  ifelse [ traversable ] of patch-left-and-ahead 90 1 = 1 [
+    set heading heading + 270
     forward speed
-    if pxcor = 25 [ set heading 270 ]
-    if pxcor = -25 [ set heading 90 ]
+    report True
+  ] [
+  report False
+  ]
+end
+
+to-report look-right
+  ifelse [ traversable ] of patch-right-and-ahead 90 1 = 1 [
+    set heading heading + 90
+    forward speed
+    report True
+  ] [
+  report False
   ]
 end
 
@@ -96,9 +141,9 @@ to pick-up-loads
     ]
 ;    trucks at full capacity turn red
     ifelse capacity = 5 [ set color red ] [ set color blue ]
-    if capacity = 5 and oldCapacity = 4 [
-      face one-of patches with [ pcolor = red ]
-    ]
+;    if capacity = 5 and oldCapacity = 4 [
+;      face one-of patches with [ pcolor = red ]
+;    ]
   ]
 end
 
@@ -129,9 +174,9 @@ end
 to expand-farm
   ask patches with [ pcolor = green ] [
 ;    farms with enough capital expand to adjacent road (where trucks can pick up)
-    if farmCapital >= 5 and any? neighbors with [ pcolor = white ] [
+    if farmCapital >= 5 and any? neighbors with [ pcolor = gray ] [
       set farmCapital farmCapital - 5
-      ask one-of neighbors with [ pcolor = white ] [
+      ask one-of neighbors with [ pcolor = gray ] [
         set pcolor green
       ]
     ]
@@ -375,7 +420,7 @@ SLIDER
 30
 80
 202
-114
+113
 max-trucks
 max-trucks
 100
