@@ -25,30 +25,6 @@ patches-own [
   plantDistance
 ]
 
-to compute-manhattan-distances
-  create-turtles 1 [
-    setxy 0 0
-    set homeDistance 0
-  ]
-  repeat 100 [ compute-manhattan-distance-one-step ]
-end
-
-to compute-manhattan-distance-one-step
-  ask turtles [
-    set plantDistance homeDistance
-    let nextDistance homeDistance + 1
-    let patchesToVisit neighbors4 with [ traversable = 1 and plantDistance = -1 ]
-    ask patchesToVisit [
-      sprout 1 [
-        set homeDistance nextDistance
-      ]
-    ]
-    die
-  ]
-end
-
-
-
 to setup
   clear-all
   setup-gis
@@ -80,42 +56,80 @@ to setup-gis
   ask patches gis:intersecting roads-dataset [ set pcolor gray ]
 end
 
-to setup-patches
-;  create roads
+to create-roads
   ask patches with [ pcolor = gray ] [
     set traversable 1
     set trackDensity 0
-    set plantDistance -1
+    set plantDistance 999999999
   ]
-;  create farms
-  ask n-of number-of-farms patches with [ pcolor = gray and pxcor != 0 and pycor != 0 ] [
+end
+
+to create-farms
+  let potentialSites patches with [ pcolor = black ]
+  let nextToRoad potentialSites with [ any? neighbors4 with [ pcolor = gray ] ]
+  ask n-of number-of-farms nextToRoad [
     set pcolor green
     set traversable 1
     set trackDensity 0
-    set plantDistance -1
+    set plantDistance 999999999
   ]
-;  create plant
-  ask patch 0 0 [
+end
+
+to create-plants
+  let potentialSites patches with [ pcolor = black ]
+  let nextToRoad potentialSites with [ any? neighbors4 with [ pcolor = gray ] ]
+  ask n-of number-of-plants nextToRoad [
     set pcolor red
     set currentCapacity 0
     set maxCapacity 100
     set traversable 1
     set trackDensity 0
-    set plantDistance distancexy 0 0
+    set plantDistance 0
+  ]
+end
+
+to setup-patches
+  create-roads
+  create-farms
+  create-plants
+end
+
+to compute-manhattan-distances
+  ask patches with [ pcolor = red ] [
+    sprout 1 [
+      set homeDistance 0
+    ]
+  ]
+  repeat 10000 [ compute-manhattan-distance-one-step ]
+end
+
+to compute-manhattan-distance-one-step
+  ask turtles [
+    set plantDistance homeDistance
+    let nextDistance homeDistance + 1
+    let patchesToVisit neighbors4 with [ traversable = 1 and nextDistance < plantDistance ]
+    ask patchesToVisit [
+      if not any? turtles-here [
+        sprout 1 [
+          set homeDistance nextDistance
+        ]
+      ]
+    ]
+    die
   ]
 end
 
 to setup-turtles
   set-default-shape turtles "truck"
 ;  start with one truck
-  create-turtles 1 [
-    set color blue
-    setxy 0 0
-    set heading 0
-;    new truck moves at random speed
-    set speed 1
-    set health 100
-    set transportState 0
+  ask patches with [ pcolor = red ] [
+    sprout 1 [
+      set color blue
+      set heading 0
+      set speed 1
+      set health 100
+      set transportState 0
+    ]
   ]
 end
 
@@ -142,30 +156,6 @@ to head-home
   let p min-one-of neighbors4 with [ traversable = 1 ] [ plantDistance ]
   face p
   move-to p
-end
-
-to go-back
-  set heading ( heading + 180 )
-end
-
-to-report look-left
-  ifelse [ traversable ] of patch-left-and-ahead 90 1 = 1 [
-    set heading heading + 270
-    forward speed
-    report True
-  ] [
-  report False
-  ]
-end
-
-to-report look-right
-  ifelse [ traversable ] of patch-right-and-ahead 90 1 = 1 [
-    set heading heading + 90
-    forward speed
-    report True
-  ] [
-  report False
-  ]
 end
 
 to grow-palm-oil
@@ -197,14 +187,10 @@ to drop-off-loads
 ;    trucks at full capacity drop off loads at plants
     if capacity >= 5 and pcolor = red [
 ;      palm oil in trucks processed and converted to revenue
-      ask one-of patches with [ pcolor = red ] [
-        if currentCapacity <= maxCapacity - 5 [
-          ask myself [
-            set  capacity capacity - 5
-            set transportState 0
-          ]
-          set currentCapacity currentCapacity + 5
-        ]
+      if currentCapacity <= maxCapacity - 5 [
+        set capacity capacity - 5
+        set transportState 0
+        set currentCapacity currentCapacity + 5
       ]
     ]
   ]
@@ -222,10 +208,14 @@ end
 to expand-farm
   ask patches with [ pcolor = green ] [
 ;    farms with enough capital expand to adjacent road (where trucks can pick up)
-    if farmCapital >= 5 and any? neighbors with [ pcolor = gray ] [
+    ;let nextDistance plantDistance + 1
+    if farmCapital >= 5 and any? neighbors4 with [ pcolor = black ] [
       set farmCapital farmCapital - 5
-      ask one-of neighbors with [ pcolor = gray ] [
+      ask one-of neighbors4 with [ pcolor = black ] [
         set pcolor green
+        set traversable 1
+        set trackDensity 0
+        set plantDistance [ plantDistance ] of min-one-of neighbors4 with [ traversable = 1 ] [ plantDistance ] + 1
       ]
     ]
   ]
@@ -233,13 +223,12 @@ end
 
 to buy-trucks
   let numTrucks count turtles
-  ask patch 0 0 [
+  ask one-of patches with [ pcolor = red ] [
 ;    company buys trucks if profits exceed threshold
-    if profit > truck-cost and currentCapacity <= 75 and numTrucks < max-trucks [
+    if profit > truck-cost and currentCapacity <= 0.75 * maxCapacity and numTrucks < max-trucks [
 ;      wait 2
       sprout 1 [
         set color blue
-        setxy 0 0
         set health 100
         set transportState 0
 ;        new trucks move at random speed
@@ -257,7 +246,9 @@ to maintain-trucks
   let numTrucks count turtles
   if profit > numTrucks * maintenance [
     ask turtles [
-      set health health + maintenance
+      if health < 100 [
+        set health health + maintenance
+      ]
     ]
     set cost cost + numTrucks * maintenance
   ]
@@ -280,10 +271,10 @@ to calculate-profit
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-477
-189
-795
-508
+686
+21
+1205
+541
 -1
 -1
 10.0
@@ -296,10 +287,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--15
-15
--15
-15
+-25
+25
+-25
+25
 1
 1
 1
@@ -363,10 +354,10 @@ cost
 11
 
 PLOT
-479
-19
-679
-169
+455
+200
+655
+350
 profit over time
 time
 profit
@@ -407,10 +398,10 @@ profit
 11
 
 MONITOR
-219
-135
-335
-180
+292
+199
+408
+244
 number of trucks
 count turtles
 17
@@ -426,7 +417,7 @@ truck-cost
 truck-cost
 1
 10
-8.0
+10.0
 1
 1
 NIL
@@ -441,17 +432,17 @@ maintenance
 maintenance
 0
 0.05
-0.04
+0.05
 0.01
 1
 NIL
 HORIZONTAL
 
 PLOT
-715
-20
-915
-170
+456
+36
+656
+186
 current capacity over time
 time
 current capacity
@@ -463,7 +454,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plot [ currentCapacity ] of patch 0 0"
+"default" 1.0 0 -16777216 true "" "plot sum [ currentCapacity ] of patches with [ pcolor = red ]"
 
 SLIDER
 30
@@ -472,9 +463,9 @@ SLIDER
 113
 max-trucks
 max-trucks
-100
-170
-120.0
+80
+1000
+1000.0
 5
 1
 NIL
@@ -487,10 +478,43 @@ SLIDER
 275
 number-of-farms
 number-of-farms
-0
-150
+1
+200
+26.0
+25
+1
+NIL
+HORIZONTAL
+
+PLOT
+456
+373
+657
+523
+farms over time
+time
+number of farms
+0.0
 10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot count patches with [ pcolor = green ]"
+
+SLIDER
+30
+292
+203
+326
+number-of-plants
+number-of-plants
+1
 10
+5.0
+1
 1
 NIL
 HORIZONTAL
