@@ -1,4 +1,4 @@
-extensions [ gis ]
+extensions [ gis vid ]
 
 globals [
   revenue
@@ -32,6 +32,7 @@ to setup
   compute-manhattan-distances
   setup-turtles
   reset-ticks
+  if vid:recorder-status = "recording" [ vid:record-interface ]
 end
 
 to go
@@ -47,6 +48,7 @@ to go
   trucks-breakdown
   calculate-profit
   tick
+  if vid:recorder-status = "recording" [ vid:record-interface ]
 end
 
 to setup-gis
@@ -269,12 +271,45 @@ end
 to calculate-profit
   set profit ( revenue - cost )
 end
+
+to start-recorder
+  carefully [ vid:start-recorder ] [ user-message error-message ]
+end
+
+to reset-recorder
+  let message (word
+    "If you reset the recorder, the current recording will be lost."
+    "Are you sure you want to reset the recorder?")
+  if vid:recorder-status = "inactive" or user-yes-or-no? message [
+    vid:reset-recorder
+  ]
+end
+
+to save-recording
+  if vid:recorder-status = "inactive" [
+    user-message "The recorder is inactive. There is nothing to save."
+    stop
+  ]
+  ; prompt user for movie location
+  user-message (word
+    "Choose a name for your movie file (the "
+    ".mp4 extension will be automatically added).")
+  let path user-new-file
+  if not is-string? path [ stop ]  ; stop if user canceled
+  ; export the movie
+  carefully [
+    vid:save-recording path
+    user-message (word "Exported movie to " path ".")
+  ] [
+    user-message error-message
+  ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
-686
-21
-1205
-541
+208
+10
+726
+529
 -1
 -1
 10.0
@@ -298,10 +333,10 @@ ticks
 30.0
 
 BUTTON
-93
-21
-156
-54
+94
+51
+157
+84
 NIL
 go
 T
@@ -315,10 +350,10 @@ NIL
 0
 
 BUTTON
-23
-21
-86
-54
+24
+51
+87
+84
 NIL
 setup
 NIL
@@ -332,10 +367,10 @@ NIL
 1
 
 MONITOR
-222
-75
-288
-120
+739
+13
+831
+58
 NIL
 revenue
 17
@@ -343,10 +378,10 @@ revenue
 11
 
 MONITOR
-303
-75
-360
-120
+738
+69
+832
+114
 NIL
 cost
 17
@@ -354,10 +389,10 @@ cost
 11
 
 PLOT
-455
-200
-655
-350
+844
+10
+1044
+160
 profit over time
 time
 profit
@@ -372,10 +407,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot profit"
 
 SLIDER
-27
-162
-202
-195
+19
+156
+194
+189
 growth-rate
 growth-rate
 0.1
@@ -387,10 +422,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-380
-76
-437
-121
+738
+127
+832
+172
 NIL
 profit
 17
@@ -398,10 +433,10 @@ profit
 11
 
 MONITOR
-292
-199
-408
-244
+739
+187
+834
+232
 number of trucks
 count turtles
 17
@@ -409,25 +444,25 @@ count turtles
 11
 
 SLIDER
-29
-122
-202
-155
+18
+223
+191
+256
 truck-cost
 truck-cost
 1
 10
-10.0
+5.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-29
-201
-205
-234
+18
+262
+194
+295
 maintenance
 maintenance
 0
@@ -439,10 +474,10 @@ NIL
 HORIZONTAL
 
 PLOT
-456
-36
-656
-186
+844
+326
+1044
+476
 current capacity over time
 time
 current capacity
@@ -457,10 +492,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot sum [ currentCapacity ] of patches with [ pcolor = red ]"
 
 SLIDER
-30
-80
-202
-113
+19
+303
+191
+336
 max-trucks
 max-trucks
 80
@@ -472,25 +507,25 @@ NIL
 HORIZONTAL
 
 SLIDER
-28
-242
-201
-275
+20
+117
+193
+150
 number-of-farms
 number-of-farms
 1
 200
-26.0
+126.0
 25
 1
 NIL
 HORIZONTAL
 
 PLOT
-456
-373
-657
-523
+844
+167
+1045
+317
 farms over time
 time
 number of farms
@@ -505,10 +540,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot count patches with [ pcolor = green ]"
 
 SLIDER
-30
-292
-203
-326
+19
+369
+192
+402
 number-of-plants
 number-of-plants
 1
@@ -518,6 +553,97 @@ number-of-plants
 1
 NIL
 HORIZONTAL
+
+TEXTBOX
+25
+21
+175
+39
+PalmScape
+11
+0.0
+1
+
+TEXTBOX
+23
+97
+173
+115
+---Farms---
+11
+0.0
+1
+
+TEXTBOX
+21
+205
+171
+223
+---Trucks---
+11
+0.0
+1
+
+TEXTBOX
+23
+349
+173
+367
+---Plants---
+11
+0.0
+1
+
+BUTTON
+20
+490
+134
+523
+NIL
+save-recording
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+20
+415
+134
+448
+NIL
+start-recorder
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+21
+452
+134
+486
+NIL
+reset-recorder
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
