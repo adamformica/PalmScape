@@ -201,10 +201,10 @@ end
 
 to evaporate-tracks
   ask patches [
-    if trackDensity >= 0.001 [
-      set trackDensity trackDensity - 0.001
-    ]
-  ]
+;    if trackDensity >= 0.1 [
+;      set trackDensity trackDensity - 0.1
+;    ]
+;  ]
 end
 
 to grow-palm-oil
