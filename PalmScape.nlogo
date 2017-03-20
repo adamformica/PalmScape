@@ -41,6 +41,7 @@ to setup
 end
 
 to go
+  protect-farms
   move-turtles
   erode-tracks
   grow-palm-oil
@@ -171,33 +172,40 @@ to move-turtles
 end
 
 to head-out-up-tracks
-  let p min-one-of neighbors4 with [ traversable = 1 ] [ trackDensity ]
-  let dir random-float 1
-  ifelse dir > 1 [
-    if [ trackDensity ] of p > trackDensity [
-      face p
-      move-to p
-    ]
-  ] [
-    if [ trackDensity ] of p < trackDensity [
-      face p
-      move-to p
+  if any? neighbors4 with [ traversable = 1 ] [
+    let p min-one-of neighbors4 with [ traversable = 1 ] [ trackDensity ]
+    let dir random-float 1
+    ifelse dir > 0.2 [
+      if [ trackDensity ] of p > trackDensity [
+        face p
+        move-to p
+      ]
+    ] [
+      if [ trackDensity ] of p < trackDensity [
+        face p
+        move-to p
+      ]
     ]
   ]
 end
 
 to head-out-down-tracks
-  let p min-one-of neighbors4 with [ traversable = 1 ] [ trackDensity ]
-  if [ trackDensity ] of p < trackDensity [
-    face p
-    move-to p
+  if any? neighbors4 with [ traversable = 1 ] [
+      let p min-one-of neighbors4 with [ traversable = 1 ] [ trackDensity ]
+      if [ trackDensity ] of p < trackDensity [
+        face p
+        move-to p
+      ]
   ]
+
 end
 
 to head-home
-  let p min-one-of neighbors4 with [ traversable = 1 ] [ plantDistance ]
-  face p
-  move-to p
+  if any? neighbors4 with [ traversable = 1 ] [
+    let p min-one-of neighbors4 with [ traversable = 1 ] [ plantDistance ]
+    face p
+    move-to p
+  ]
 end
 
 to erode-tracks
@@ -264,7 +272,7 @@ to expand-farm
     if farmCapital >= 5 and any? neighbors4 with [ pcolor = black ] [
       set farmCapital farmCapital - 5
       ask one-of neighbors4 with [ pcolor = black ] [
-        set pcolor green
+        set pcolor 57
         set farm? true
         set traversable 1
         set trackDensity 0
@@ -278,7 +286,7 @@ to color-farms
   let light-green-netlogo extract-rgb 57
   let dark-green-netlogo extract-rgb 53
   ask patches with [ farm? = true ] [
-    set pcolor palette:scale-gradient ( list light-green-netlogo dark-green-netlogo ) farmCapital 0 10
+    set pcolor palette:scale-gradient ( list light-green-netlogo dark-green-netlogo ) palmOil 0 10
   ]
 end
 
@@ -378,6 +386,18 @@ to save-recording
     user-message (word "Exported movie to " path ".")
   ] [
     user-message error-message
+  ]
+end
+
+to protect-farms
+  ifelse protect-topright? = true [
+    ask patches with [ pxcor > 0 and pycor > 0 ] [
+      set traversable 0
+    ]
+  ] [
+    ask patches with [ farm? = true or road? = true or plant? = true ] [
+      set traversable 1
+    ]
   ]
 end
 @#$#@#$#@
@@ -485,12 +505,12 @@ PENS
 SLIDER
 19
 156
-194
+196
 189
 growth-rate
 growth-rate
-0.01
-0.3
+0
+0.1
 0.1
 0.01
 1
@@ -520,10 +540,10 @@ count turtles
 11
 
 SLIDER
-18
-254
-191
-287
+16
+322
+189
+355
 truck-cost
 truck-cost
 1
@@ -535,10 +555,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-18
-293
-194
-326
+16
+361
+192
+394
 maintenance
 maintenance
 0
@@ -568,16 +588,16 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot sum [ currentCapacity ] of patches with [ plant? = true ]"
 
 SLIDER
-19
-334
-191
-367
+17
+402
+189
+435
 max-trucks
 max-trucks
-80
+0
 1000
-1000.0
-5
+50.0
+50
 1
 NIL
 HORIZONTAL
@@ -616,10 +636,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot count patches with [ farm? = true ]"
 
 SLIDER
-19
-400
-192
-433
+17
+468
+190
+501
 number-of-plants
 number-of-plants
 1
@@ -651,30 +671,30 @@ TEXTBOX
 1
 
 TEXTBOX
-21
-236
-171
-254
+19
+304
+169
+322
 ---Trucks---
 11
 0.0
 1
 
 TEXTBOX
-23
-380
-173
-398
+21
+448
+171
+466
 ---Plants---
 11
 0.0
 1
 
 BUTTON
-20
-521
-134
-554
+18
+589
+132
+622
 NIL
 save-recording
 NIL
@@ -688,10 +708,10 @@ NIL
 1
 
 BUTTON
-20
-446
-134
-479
+18
+514
+132
+547
 NIL
 start-recorder
 NIL
@@ -705,10 +725,10 @@ NIL
 1
 
 BUTTON
-21
-483
-134
-517
+19
+551
+132
+585
 NIL
 reset-recorder
 NIL
@@ -724,17 +744,53 @@ NIL
 SLIDER
 17
 195
-195
+196
 228
 degradation-rate
 degradation-rate
+0
+0.1
 0.01
-0.1
-0.1
 0.01
 1
 NIL
 HORIZONTAL
+
+TEXTBOX
+23
+243
+173
+261
+---Roads---
+11
+0.0
+1
+
+SLIDER
+18
+259
+193
+292
+track-erosion-rate
+track-erosion-rate
+0
+0.5
+0.3
+0.1
+1
+NIL
+HORIZONTAL
+
+SWITCH
+154
+592
+304
+625
+protect-topright?
+protect-topright?
+1
+1
+-1000
 
 @#$#@#$#@
 ## WHAT IS IT?
