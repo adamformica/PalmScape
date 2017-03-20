@@ -14,6 +14,7 @@ turtles-own [
   transportState
   firstRound
   homeDistance
+  distanceTurtle?
 ]
 
 patches-own [
@@ -42,6 +43,7 @@ end
 
 to go
   protect-farms
+  regenerate-farms
   move-turtles
   erode-tracks
   grow-palm-oil
@@ -113,8 +115,9 @@ to setup-patches
 end
 
 to compute-manhattan-distances
-  ask patches with [ plant? = true ] [
+  ask patches with [ plant? = true and traversable = 1 ] [
     sprout 1 [
+      set distanceTurtle? true
       set homeDistance 0
     ]
   ]
@@ -122,13 +125,14 @@ to compute-manhattan-distances
 end
 
 to compute-manhattan-distance-one-step
-  ask turtles [
+  ask turtles with [ distanceTurtle? = true ] [
     set plantDistance homeDistance
     let nextDistance homeDistance + 1
     let patchesToVisit neighbors4 with [ traversable = 1 and nextDistance < plantDistance ]
     ask patchesToVisit [
       if not any? turtles-here [
         sprout 1 [
+          set distanceTurtle? true
           set homeDistance nextDistance
         ]
       ]
@@ -219,7 +223,10 @@ end
 to grow-palm-oil
   ask patches with [ farm? = true ] [
 ;    palm oil grows on farms at certain rate
-    set palmOil palmOil + growth-rate - degradation
+    set palmOil palmOil + growth-rate
+    if palmOil > 0 [
+      set palmOil palmOil - degradation
+    ]
   ]
 end
 
@@ -276,7 +283,9 @@ to expand-farm
         set farm? true
         set traversable 1
         set trackDensity 0
-        set plantDistance [ plantDistance ] of min-one-of neighbors4 with [ traversable = 1 ] [ plantDistance ] + 1
+        if any? neighbors4 with [ traversable = 1 ] [
+          set plantDistance [ plantDistance ] of min-one-of neighbors4 with [ traversable = 1 ] [ plantDistance ] + 1
+        ]
       ]
     ]
   ]
@@ -394,10 +403,18 @@ to protect-farms
     ask patches with [ pxcor > 0 and pycor > 0 ] [
       set traversable 0
     ]
+    compute-manhattan-distances
   ] [
     ask patches with [ farm? = true or road? = true or plant? = true ] [
       set traversable 1
     ]
+    compute-manhattan-distances
+  ]
+end
+
+to regenerate-farms
+  ask patches with [ farm? = true ] [
+    set degradation degradation - 0.00025
   ]
 end
 @#$#@#$#@
@@ -775,7 +792,7 @@ track-erosion-rate
 track-erosion-rate
 0
 0.5
-0.3
+0.1
 0.1
 1
 NIL
@@ -788,7 +805,7 @@ SWITCH
 625
 protect-topright?
 protect-topright?
-1
+0
 1
 -1000
 
