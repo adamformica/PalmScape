@@ -27,6 +27,7 @@ patches-own [
   traversable
   trackDensity
   plantDistance
+  degradation
 ]
 
 to setup
@@ -41,7 +42,7 @@ end
 
 to go
   move-turtles
-  evaporate-tracks
+  erode-tracks
   grow-palm-oil
   pick-up-loads
   drop-off-loads
@@ -140,7 +141,7 @@ to setup-turtles
 ;  start with one truck
   ask patches with [ plant? = true ] [
     sprout 1 [
-      set color sky
+      set color blue
       set heading 0
       set speed 1
       set health 100
@@ -199,10 +200,10 @@ to head-home
   move-to p
 end
 
-to evaporate-tracks
+to erode-tracks
   ask patches [
-    if trackDensity >= 0.001 [
-      set trackDensity trackDensity - 0.001
+    if trackDensity >= track-erosion-rate [
+      set trackDensity trackDensity - track-erosion-rate
     ]
   ]
 end
@@ -210,7 +211,7 @@ end
 to grow-palm-oil
   ask patches with [ farm? = true ] [
 ;    palm oil grows on farms at certain rate
-    set palmOil palmOil + growth-rate
+    set palmOil palmOil + growth-rate - degradation
   ]
 end
 
@@ -222,12 +223,13 @@ to pick-up-loads
       set capacity capacity + 1
       set palmOil palmOil - 1
       set farmCapital farmCapital + 1
+      set degradation degradation + degradation-rate
     ]
     ifelse capacity = 5 [
-      set color blue
+      set color violet
       set transportState 1
     ] [
-      set color sky
+      set color blue
     ]
   ]
 end
@@ -303,7 +305,7 @@ to buy-trucks
     if profit > truck-cost and currentCapacity <= 0.75 * maxCapacity and numTrucks < max-trucks [
 ;      wait 2
       sprout 1 [
-        set color sky
+        set color blue
         set health 100
         set transportState 0
         set firstRound 0
@@ -487,10 +489,10 @@ SLIDER
 189
 growth-rate
 growth-rate
-0.1
+0.01
 0.3
-0.2
 0.1
+0.01
 1
 NIL
 HORIZONTAL
@@ -519,9 +521,9 @@ count turtles
 
 SLIDER
 18
-223
+254
 191
-256
+287
 truck-cost
 truck-cost
 1
@@ -534,9 +536,9 @@ HORIZONTAL
 
 SLIDER
 18
-262
+293
 194
-295
+326
 maintenance
 maintenance
 0
@@ -567,9 +569,9 @@ PENS
 
 SLIDER
 19
-303
+334
 191
-336
+367
 max-trucks
 max-trucks
 80
@@ -615,9 +617,9 @@ PENS
 
 SLIDER
 19
-369
+400
 192
-402
+433
 number-of-plants
 number-of-plants
 1
@@ -650,9 +652,9 @@ TEXTBOX
 
 TEXTBOX
 21
-205
+236
 171
-223
+254
 ---Trucks---
 11
 0.0
@@ -660,9 +662,9 @@ TEXTBOX
 
 TEXTBOX
 23
-349
+380
 173
-367
+398
 ---Plants---
 11
 0.0
@@ -670,9 +672,9 @@ TEXTBOX
 
 BUTTON
 20
-490
+521
 134
-523
+554
 NIL
 save-recording
 NIL
@@ -687,9 +689,9 @@ NIL
 
 BUTTON
 20
-415
+446
 134
-448
+479
 NIL
 start-recorder
 NIL
@@ -704,9 +706,9 @@ NIL
 
 BUTTON
 21
-452
+483
 134
-486
+517
 NIL
 reset-recorder
 NIL
@@ -718,6 +720,21 @@ NIL
 NIL
 NIL
 1
+
+SLIDER
+17
+195
+195
+228
+degradation-rate
+degradation-rate
+0.01
+0.1
+0.1
+0.01
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?

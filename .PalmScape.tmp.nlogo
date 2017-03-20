@@ -27,6 +27,7 @@ patches-own [
   traversable
   trackDensity
   plantDistance
+  degradation
 ]
 
 to setup
@@ -41,7 +42,7 @@ end
 
 to go
   move-turtles
-  evaporate-tracks
+  erode-tracks
   grow-palm-oil
   pick-up-loads
   drop-off-loads
@@ -140,7 +141,7 @@ to setup-turtles
 ;  start with one truck
   ask patches with [ plant? = true ] [
     sprout 1 [
-      set color sky
+      set color blue
       set heading 0
       set speed 1
       set health 100
@@ -199,18 +200,18 @@ to head-home
   move-to p
 end
 
-to evaporate-tracks
+to erode-tracks
   ask patches [
-;    if trackDensity >= 0.1 [
-;      set trackDensity trackDensity - 0.1
-;    ]
-;  ]
+    if trackDensity >= track-erosion-rate [
+      set trackDensity trackDensity - track-erosion-rate
+    ]
+  ]
 end
 
 to grow-palm-oil
   ask patches with [ farm? = true ] [
 ;    palm oil grows on farms at certain rate
-    set palmOil palmOil + growth-rate
+    set palmOil palmOil + growth-rate - degradation
   ]
 end
 
@@ -222,12 +223,13 @@ to pick-up-loads
       set capacity capacity + 1
       set palmOil palmOil - 1
       set farmCapital farmCapital + 1
+      set degradation degradation + degradation-rate
     ]
     ifelse capacity = 5 [
-      set color blue
+      set color violet
       set transportState 1
     ] [
-      set color sky
+      set color blue
     ]
   ]
 end
@@ -303,7 +305,7 @@ to buy-trucks
     if profit > truck-cost and currentCapacity <= 0.75 * maxCapacity and numTrucks < max-trucks [
 ;      wait 2
       sprout 1 [
-        set color sky
+        set color blue
         set health 100
         set transportState 0
         set firstRound 0
@@ -487,10 +489,10 @@ SLIDER
 189
 growth-rate
 growth-rate
-0.1
+0.01
 0.3
-0.2
 0.1
+0.01
 1
 NIL
 HORIZONTAL
@@ -518,10 +520,10 @@ count turtles
 11
 
 SLIDER
-18
-223
-191
-256
+16
+322
+189
+355
 truck-cost
 truck-cost
 1
@@ -533,10 +535,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-18
-262
-194
-295
+16
+361
+192
+394
 maintenance
 maintenance
 0
@@ -566,10 +568,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot sum [ currentCapacity ] of patches with [ plant? = true ]"
 
 SLIDER
-19
-303
-191
-336
+17
+402
+189
+435
 max-trucks
 max-trucks
 80
@@ -614,10 +616,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot count patches with [ farm? = true ]"
 
 SLIDER
-19
-369
-192
-402
+17
+468
+190
+501
 number-of-plants
 number-of-plants
 1
@@ -649,30 +651,30 @@ TEXTBOX
 1
 
 TEXTBOX
-21
-205
-171
-223
+19
+304
+169
+322
 ---Trucks---
 11
 0.0
 1
 
 TEXTBOX
-23
-349
-173
-367
+21
+448
+171
+466
 ---Plants---
 11
 0.0
 1
 
 BUTTON
-20
-490
-134
-523
+18
+589
+132
+622
 NIL
 save-recording
 NIL
@@ -686,10 +688,10 @@ NIL
 1
 
 BUTTON
-20
-415
-134
-448
+18
+514
+132
+547
 NIL
 start-recorder
 NIL
@@ -703,10 +705,10 @@ NIL
 1
 
 BUTTON
-21
-452
-134
-486
+19
+551
+132
+585
 NIL
 reset-recorder
 NIL
@@ -718,6 +720,46 @@ NIL
 NIL
 NIL
 1
+
+SLIDER
+17
+195
+195
+228
+degradation-rate
+degradation-rate
+0.01
+0.1
+0.1
+0.01
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+23
+243
+173
+261
+---Roads---
+11
+0.0
+1
+
+SLIDER
+18
+259
+193
+292
+track-erosion-rate
+track-erosion-rate
+0.01
+0.1
+0.01
+0.01
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
