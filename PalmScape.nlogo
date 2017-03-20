@@ -12,6 +12,7 @@ turtles-own [
   speed
   health
   transportState
+  firstRound
   homeDistance
 ]
 
@@ -131,6 +132,7 @@ to setup-turtles
       set speed 1
       set health 100
       set transportState 0
+      set firstRound 1
     ]
   ]
 end
@@ -138,15 +140,39 @@ end
 to move-turtles
   ask turtles [
     set trackDensity trackDensity + 1
-    ifelse transportState = 0 [
-      head-out
+    ifelse firstRound = 0 [
+      ifelse transportState = 0 [
+        head-out-up-tracks
+      ] [
+        head-home
+      ]
     ] [
-      head-home
+      ifelse transportState = 0 [
+        head-out-down-tracks
+      ] [
+        head-home
+      ]
     ]
   ]
 end
 
-to head-out
+to head-out-up-tracks
+  let p min-one-of neighbors4 with [ traversable = 1 ] [ trackDensity ]
+  let dir random-float 1
+  ifelse dir > 0.2 [
+    if [ trackDensity ] of p > trackDensity [
+      face p
+      move-to p
+    ]
+  ] [
+    if [ trackDensity ] of p < trackDensity [
+      face p
+      move-to p
+    ]
+  ]
+end
+
+to head-out-down-tracks
   let p min-one-of neighbors4 with [ traversable = 1 ] [ trackDensity ]
   if [ trackDensity ] of p < trackDensity [
     face p
@@ -233,6 +259,7 @@ to buy-trucks
         set color blue
         set health 100
         set transportState 0
+        set firstRound 0
 ;        new trucks move at random speed
         set speed random-float 1
 ;        new trucks randomly move east or west
