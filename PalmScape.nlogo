@@ -401,29 +401,61 @@ to save-recording
 end
 
 to rest-farms
-  ifelse rest-topright? = true [
-    ask patches with [ pxcor > 0 and pycor > 0 ] [
-      set traversable 0
+    ifelse rest-quadrant = "top right" [
+      ask patches with [ pxcor > 0 and pycor > 0 ] [
+        set traversable 0
+      ]
+      reset-plant-distance-farms-rest
+    ] [
+      reset-plant-distance-no-farm-rest
+      ifelse rest-quadrant = "top left" [
+        ask patches with [ pxcor < 0 and pycor > 0 ] [
+          set traversable 0
+        ]
+        reset-plant-distance-farms-rest
+      ] [
+        reset-plant-distance-no-farm-rest
+        ifelse rest-quadrant = "bottom right" [
+          ask patches with [ pxcor > 0 and pycor < 0 ] [
+            set traversable 0
+          ]
+          reset-plant-distance-farms-rest
+        ] [
+          reset-plant-distance-no-farm-rest
+          ifelse rest-quadrant = "bottom left" [
+            ask patches with [ pxcor < 0 and pycor < 0 ] [
+              set traversable 0
+            ]
+            reset-plant-distance-farms-rest
+          ] [
+            reset-plant-distance-no-farm-rest
+          ]
+        ]
+      ]
     ]
-    ask patches with [ farm? = true or road? = true ] [
-      set plantDistance 999999999
-    ]
-    ask patches with [ plant? = true ] [
-      set plantDistance 0
-    ]
-    compute-manhattan-distances
-  ] [
-    ask patches with [ farm? = true or road? = true or plant? = true ] [
-      set traversable 1
-    ]
-    ask patches with [ farm? = true or road? = true ] [
-      set plantDistance 999999999
-    ]
-    ask patches with [ plant? = true ] [
-      set plantDistance 0
-    ]
-    compute-manhattan-distances
+end
+
+to reset-plant-distance-farms-rest
+  ask patches with [ farm? = true or road? = true ] [
+    set plantDistance 999999999
   ]
+  ask patches with [ plant? = true ] [
+    set plantDistance 0
+  ]
+  compute-manhattan-distances
+end
+
+to reset-plant-distance-no-farm-rest
+  ask patches with [ farm? = true or road? = true or plant? = true ] [
+    set traversable 1
+  ]
+  ask patches with [ farm? = true or road? = true ] [
+    set plantDistance 999999999
+  ]
+  ask patches with [ plant? = true ] [
+    set plantDistance 0
+  ]
+  compute-manhattan-distances
 end
 
 to regenerate-farms
@@ -542,7 +574,7 @@ growth-rate
 growth-rate
 0
 0.1
-0.02
+0.1
 0.01
 1
 NIL
@@ -812,16 +844,15 @@ track-erosion-rate
 NIL
 HORIZONTAL
 
-SWITCH
-154
-592
-304
-625
-rest-topright?
-rest-topright?
+CHOOSER
+149
+578
+287
+623
+rest-quadrant
+rest-quadrant
+"none" "top right" "top left" "bottom right" "bottom left"
 0
-1
--1000
 
 @#$#@#$#@
 ## WHAT IS IT?
