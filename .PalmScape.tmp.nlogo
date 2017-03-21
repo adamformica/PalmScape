@@ -42,7 +42,7 @@ to setup
 end
 
 to go
-  protect-farms
+  rest-farms
   regenerate-farms
   move-turtles
   erode-tracks
@@ -152,12 +152,13 @@ to setup-turtles
       set health 100
       set transportState 0
       set firstRound 1
+      set distanceTurtle? false
     ]
   ]
 end
 
 to move-turtles
-  ask turtles [
+  ask turtles with [ distanceTurtle? = false ] [
     set trackDensity trackDensity + 1
     ifelse firstRound = 0 [
       ifelse transportState = 0 [
@@ -231,7 +232,7 @@ to grow-palm-oil
 end
 
 to pick-up-loads
-  ask turtles [
+  ask turtles with [ distanceTurtle? = false ] [
 ;    trucks below capacity pick up plam oil
     let oldCapacity capacity
     if capacity < 5 and palmOil > 1 [
@@ -250,7 +251,7 @@ to pick-up-loads
 end
 
 to drop-off-loads
-  ask turtles [
+  ask turtles with [ distanceTurtle? = false ] [
 ;    trucks at full capacity drop off loads at plants
     if capacity >= 5 and plant? = true [
 ;      palm oil in trucks processed and converted to revenue
@@ -316,7 +317,7 @@ to color-plants
 end
 
 to buy-trucks
-  let numTrucks count turtles
+  let numTrucks count turtles with [ distanceTurtle? = false ]
   ask one-of patches with [ plant? = true ] [
 ;    company buys trucks if profits exceed threshold
     if profit > truck-cost and currentCapacity <= 0.75 * maxCapacity and numTrucks < max-trucks [
@@ -330,6 +331,7 @@ to buy-trucks
         set speed random-float 1
 ;        new trucks randomly move east or west
         ifelse random 1 > 0.5 [ set heading 90 ] [ set heading 270 ]
+        set distanceTurtle? false
       ]
 ;      company accounts for truck costs on balance sheet
       set cost cost + truck-cost
@@ -338,9 +340,9 @@ to buy-trucks
 end
 
 to maintain-trucks
-  let numTrucks count turtles
+  let numTrucks count turtles with [ distanceTurtle? = false ]
   if profit > numTrucks * maintenance [
-    ask turtles [
+    ask turtles with [ distanceTurtle? = false ] [
       if health < 100 [
         set health health + maintenance
       ]
@@ -350,13 +352,13 @@ to maintain-trucks
 end
 
 to trucks-age
-  ask turtles [
+  ask turtles with [ distanceTurtle? = false ] [
     set health health - 0.02
   ]
 end
 
 to trucks-breakdown
-  ask turtles [
+  ask turtles with [ distanceTurtle? = false ] [
     if health < 10 [ die ]
   ]
 end
@@ -398,15 +400,28 @@ to save-recording
   ]
 end
 
-to protect-farms
-  ifelse protect-topright? = true [
+to rest-farms
+
+  ifelse rest-topright? = true [
     ask patches with [ pxcor > 0 and pycor > 0 ] [
       set traversable 0
+    ]
+    ask patches with [ farm? = true or road? = true ] [
+      set plantDistance 999999999
+    ]
+    ask patches with [ plant? = true ] [
+      set plantDistance 0
     ]
     compute-manhattan-distances
   ] [
     ask patches with [ farm? = true or road? = true or plant? = true ] [
       set traversable 1
+    ]
+    ask patches with [ farm? = true or road? = true ] [
+      set plantDistance 999999999
+    ]
+    ask patches with [ plant? = true ] [
+      set plantDistance 0
     ]
     compute-manhattan-distances
   ]
@@ -528,7 +543,7 @@ growth-rate
 growth-rate
 0
 0.1
-0.1
+0.02
 0.01
 1
 NIL
@@ -792,7 +807,7 @@ track-erosion-rate
 track-erosion-rate
 0
 0.5
-0.1
+0.5
 0.1
 1
 NIL
@@ -803,9 +818,9 @@ SWITCH
 592
 304
 625
-protect-topright?
-protect-topright?
-1
+rest-topright?
+rest-topright?
+0
 1
 -1000
 
