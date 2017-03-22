@@ -159,20 +159,18 @@ end
 
 to move-turtles
   ask turtles with [ distanceTurtle? = false ] [
-    if traversable = 1 [
-      set trackDensity trackDensity + 1
-      ifelse firstRound = 0 [
-        ifelse transportState = 0 [
-          head-out-up-tracks
-        ] [
-          head-home
-        ]
+    set trackDensity trackDensity + 1
+    ifelse firstRound = 0 [
+      ifelse transportState = 0 [
+        head-out-up-tracks
       ] [
-        ifelse transportState = 0 [
-          head-out-down-tracks
-        ] [
-          head-home
-        ]
+        head-home
+      ]
+    ] [
+      ifelse transportState = 0 [
+        head-out-down-tracks
+      ] [
+        head-home
       ]
     ]
   ]
@@ -494,10 +492,10 @@ ticks
 30.0
 
 BUTTON
-92
-35
-155
-68
+93
+44
+156
+77
 NIL
 go
 T
@@ -511,10 +509,10 @@ NIL
 0
 
 BUTTON
-22
-35
-85
-68
+23
+44
+86
+77
 NIL
 setup
 NIL
@@ -568,10 +566,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot profit"
 
 SLIDER
-20
-139
-197
-172
+19
+156
+196
+189
 growth-rate
 growth-rate
 0
@@ -605,10 +603,10 @@ count turtles
 11
 
 SLIDER
-16
-354
-189
-387
+15
+371
+188
+404
 truck-cost
 truck-cost
 1
@@ -620,10 +618,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-16
-393
-192
-426
+15
+410
+191
+443
 maintenance
 maintenance
 0
@@ -653,10 +651,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot sum [ currentCapacity ] of patches with [ plant? = true ]"
 
 SLIDER
-17
-434
-189
-467
+16
+451
+188
+484
 max-trucks
 max-trucks
 0
@@ -668,10 +666,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-21
-100
-194
-133
+20
+117
+193
+150
 number-of-farms
 number-of-farms
 1
@@ -701,10 +699,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot count patches with [ farm? = true ]"
 
 SLIDER
-15
-544
-188
-577
+14
+561
+187
+594
 number-of-plants
 number-of-plants
 1
@@ -726,30 +724,30 @@ PalmScape
 1
 
 TEXTBOX
-24
-80
-174
-98
+23
+97
+173
+115
 ---Farms---
 11
 0.0
 1
 
 TEXTBOX
-19
-336
-169
-354
+18
+353
+168
+371
 ---Trucks---
 11
 0.0
 1
 
 TEXTBOX
-19
-524
-169
-542
+18
+541
+168
+559
 ---Plants---
 11
 0.0
@@ -807,10 +805,10 @@ NIL
 1
 
 SLIDER
-18
-178
-197
-211
+17
+195
+196
+228
 degradation-rate
 degradation-rate
 0
@@ -822,20 +820,20 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-23
-275
-173
-293
+22
+292
+172
+310
 ---Roads---
 11
 0.0
 1
 
 SLIDER
-18
-291
-193
-324
+17
+308
+192
+341
 track-erosion-rate
 track-erosion-rate
 0
@@ -847,20 +845,20 @@ NIL
 HORIZONTAL
 
 CHOOSER
-17
-219
-155
-264
+16
+236
+154
+281
 rest-quadrant
 rest-quadrant
 "none" "top right" "top left" "bottom right" "bottom left"
-3
+0
 
 SLIDER
-13
-477
-192
-510
+12
+494
+191
+527
 follow-track-probability
 follow-track-probability
 0
