@@ -43,6 +43,7 @@ end
 
 to go
   rest-farms
+  color-boundaries
   regenerate-farms
   move-turtles
   erode-tracks
@@ -296,7 +297,9 @@ to color-farms
   let light-green-netlogo extract-rgb 57
   let dark-green-netlogo extract-rgb 53
   ask patches with [ farm? = true ] [
-    set pcolor palette:scale-gradient ( list light-green-netlogo dark-green-netlogo ) palmOil 0 10
+    if traversable = 1 [
+      set pcolor palette:scale-gradient ( list light-green-netlogo dark-green-netlogo ) palmOil 0 10
+    ]
   ]
 end
 
@@ -304,7 +307,9 @@ to color-roads
   let light-gray-netlogo extract-rgb 8
   let dark-gray-netlogo extract-rgb 4
   ask patches with [ road? = true ] [
-    set pcolor palette:scale-gradient ( list light-gray-netlogo dark-gray-netlogo ) trackDensity 0 10
+    if traversable = 1 [
+      set pcolor palette:scale-gradient ( list light-gray-netlogo dark-gray-netlogo ) trackDensity 0 10
+    ]
   ]
 end
 
@@ -312,7 +317,9 @@ to color-plants
   let light-red-netlogo extract-rgb 18
   let dark-red-netlogo extract-rgb 14
   ask patches with [ plant? = true ] [
-    set pcolor palette:scale-gradient ( list light-red-netlogo dark-red-netlogo ) currentCapacity 0 10
+    if traversable = 1 [
+      set pcolor palette:scale-gradient ( list light-red-netlogo dark-red-netlogo ) currentCapacity 0 10
+    ]
   ]
 end
 
@@ -401,38 +408,86 @@ to save-recording
 end
 
 to rest-farms
-    ifelse rest-quadrant = "top right" [
-      ask patches with [ pxcor > 0 and pycor > 0 ] [
+  ifelse rest-quadrant = "top right" [
+    ask patches with [ pxcor > 0 and pycor > 0 ] [
+      set traversable 0
+    ]
+    reset-plant-distance-farms-rest
+  ] [
+    reset-plant-distance-no-farm-rest
+    ifelse rest-quadrant = "top left" [
+      ask patches with [ pxcor < 0 and pycor > 0 ] [
         set traversable 0
       ]
       reset-plant-distance-farms-rest
     ] [
       reset-plant-distance-no-farm-rest
-      ifelse rest-quadrant = "top left" [
-        ask patches with [ pxcor < 0 and pycor > 0 ] [
+      ifelse rest-quadrant = "bottom right" [
+        ask patches with [ pxcor > 0 and pycor < 0 ] [
           set traversable 0
         ]
         reset-plant-distance-farms-rest
       ] [
         reset-plant-distance-no-farm-rest
-        ifelse rest-quadrant = "bottom right" [
-          ask patches with [ pxcor > 0 and pycor < 0 ] [
+        ifelse rest-quadrant = "bottom left" [
+          ask patches with [ pxcor < 0 and pycor < 0 ] [
             set traversable 0
           ]
           reset-plant-distance-farms-rest
         ] [
           reset-plant-distance-no-farm-rest
-          ifelse rest-quadrant = "bottom left" [
-            ask patches with [ pxcor < 0 and pycor < 0 ] [
-              set traversable 0
-            ]
-            reset-plant-distance-farms-rest
-          ] [
-            reset-plant-distance-no-farm-rest
+        ]
+      ]
+    ]
+  ]
+end
+
+to color-boundaries
+  ifelse rest-quadrant = "top right" [
+    ask patches with [ pxcor > 0 and pycor = 1 ] [
+      set pcolor yellow
+    ]
+    ask patches with [ pxcor = 1 and pycor > 0 ] [
+      set pcolor yellow
+    ]
+  ] [
+    ifelse rest-quadrant = "top left" [
+      ask patches with [ pxcor > 0 and pycor = 1 ] [
+        set pcolor yellow
+      ]
+      ask patches with [ pxcor = 1 and pycor > 0 ] [
+        set pcolor yellow
+      ]
+    ] [
+      ifelse rest-quadrant = "bottom right" [
+        ask patches with [ pxcor > 0 and pycor = 1 ] [
+          set pcolor yellow
+        ]
+        ask patches with [ pxcor = 1 and pycor > 0 ] [
+          set pcolor yellow
+        ]
+      ] [
+        ifelse rest-quadrant = "bottom left" [
+          ask patches with [ pxcor > 0 and pycor = 1 ] [
+            set pcolor yellow
+          ]
+          ask patches with [ pxcor = 1 and pycor > 0 ] [
+            set pcolor yellow
+          ]
+        ] [
+          ask patches with [ road? = true ] [
+            color-roads
+          ]
+          ask patches with [ farm? = true ] [
+            color-farms
+          ]
+          ask patches with [ plant? = true ] [
+            color-plants
           ]
         ]
       ]
     ]
+  ]
 end
 
 to reset-plant-distance-farms-rest
@@ -852,7 +907,7 @@ CHOOSER
 rest-quadrant
 rest-quadrant
 "none" "top right" "top left" "bottom right" "bottom left"
-0
+1
 
 SLIDER
 13

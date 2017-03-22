@@ -43,6 +43,7 @@ end
 
 to go
   rest-farms
+  color-boundaries
   regenerate-farms
   move-turtles
   erode-tracks
@@ -296,6 +297,7 @@ to color-farms
   let light-green-netlogo extract-rgb 57
   let dark-green-netlogo extract-rgb 53
   ask patches with [ farm? = true ] [
+    if pcolor = yellow
     set pcolor palette:scale-gradient ( list light-green-netlogo dark-green-netlogo ) palmOil 0 10
   ]
 end
@@ -401,38 +403,86 @@ to save-recording
 end
 
 to rest-farms
-    ifelse rest-quadrant = "top right" [
-      ask patches with [ pxcor > 0 and pycor > 0 ] [
+  ifelse rest-quadrant = "top right" [
+    ask patches with [ pxcor > 0 and pycor > 0 ] [
+      set traversable 0
+    ]
+    reset-plant-distance-farms-rest
+  ] [
+    reset-plant-distance-no-farm-rest
+    ifelse rest-quadrant = "top left" [
+      ask patches with [ pxcor < 0 and pycor > 0 ] [
         set traversable 0
       ]
       reset-plant-distance-farms-rest
     ] [
       reset-plant-distance-no-farm-rest
-      ifelse rest-quadrant = "top left" [
-        ask patches with [ pxcor < 0 and pycor > 0 ] [
+      ifelse rest-quadrant = "bottom right" [
+        ask patches with [ pxcor > 0 and pycor < 0 ] [
           set traversable 0
         ]
         reset-plant-distance-farms-rest
       ] [
         reset-plant-distance-no-farm-rest
-        ifelse rest-quadrant = "bottom right" [
-          ask patches with [ pxcor > 0 and pycor < 0 ] [
+        ifelse rest-quadrant = "bottom left" [
+          ask patches with [ pxcor < 0 and pycor < 0 ] [
             set traversable 0
           ]
           reset-plant-distance-farms-rest
         ] [
           reset-plant-distance-no-farm-rest
-          ifelse rest-quadrant = "bottom left" [
-            ask patches with [ pxcor < 0 and pycor < 0 ] [
-              set traversable 0
-            ]
-            reset-plant-distance-farms-rest
-          ] [
-            reset-plant-distance-no-farm-rest
+        ]
+      ]
+    ]
+  ]
+end
+
+to color-boundaries
+  ifelse rest-quadrant = "top right" [
+    ask patches with [ pxcor > 0 and pycor = 1 ] [
+      set pcolor yellow
+    ]
+    ask patches with [ pxcor = 1 and pycor > 0 ] [
+      set pcolor yellow
+    ]
+  ] [
+    ifelse rest-quadrant = "top left" [
+      ask patches with [ pxcor > 0 and pycor = 1 ] [
+        set pcolor yellow
+      ]
+      ask patches with [ pxcor = 1 and pycor > 0 ] [
+        set pcolor yellow
+      ]
+    ] [
+      ifelse rest-quadrant = "bottom right" [
+        ask patches with [ pxcor > 0 and pycor = 1 ] [
+          set pcolor yellow
+        ]
+        ask patches with [ pxcor = 1 and pycor > 0 ] [
+          set pcolor yellow
+        ]
+      ] [
+        ifelse rest-quadrant = "bottom left" [
+          ask patches with [ pxcor > 0 and pycor = 1 ] [
+            set pcolor yellow
+          ]
+          ask patches with [ pxcor = 1 and pycor > 0 ] [
+            set pcolor yellow
+          ]
+        ] [
+          ask patches with [ road? = true ] [
+            color-roads
+          ]
+          ask patches with [ farm? = true ] [
+            color-farms
+          ]
+          ask patches with [ plant? = true ] [
+            color-plants
           ]
         ]
       ]
     ]
+  ]
 end
 
 to reset-plant-distance-farms-rest
@@ -492,10 +542,10 @@ ticks
 30.0
 
 BUTTON
-93
-44
-156
-77
+92
+35
+155
+68
 NIL
 go
 T
@@ -509,10 +559,10 @@ NIL
 0
 
 BUTTON
-23
-44
-86
-77
+22
+35
+85
+68
 NIL
 setup
 NIL
@@ -566,10 +616,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot profit"
 
 SLIDER
-19
-156
-196
-189
+20
+139
+197
+172
 growth-rate
 growth-rate
 0
@@ -603,10 +653,10 @@ count turtles
 11
 
 SLIDER
-15
-371
-188
-404
+16
+354
+189
+387
 truck-cost
 truck-cost
 1
@@ -618,10 +668,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-15
-410
-191
-443
+16
+393
+192
+426
 maintenance
 maintenance
 0
@@ -651,10 +701,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot sum [ currentCapacity ] of patches with [ plant? = true ]"
 
 SLIDER
-16
-451
-188
-484
+17
+434
+189
+467
 max-trucks
 max-trucks
 0
@@ -666,10 +716,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-20
-117
-193
-150
+21
+100
+194
+133
 number-of-farms
 number-of-farms
 1
@@ -699,10 +749,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot count patches with [ farm? = true ]"
 
 SLIDER
-14
-561
-187
-594
+15
+544
+188
+577
 number-of-plants
 number-of-plants
 1
@@ -724,30 +774,30 @@ PalmScape
 1
 
 TEXTBOX
-23
-97
-173
-115
+24
+80
+174
+98
 ---Farms---
 11
 0.0
 1
 
 TEXTBOX
-18
-353
-168
-371
+19
+336
+169
+354
 ---Trucks---
 11
 0.0
 1
 
 TEXTBOX
-18
-541
-168
-559
+19
+524
+169
+542
 ---Plants---
 11
 0.0
@@ -805,10 +855,10 @@ NIL
 1
 
 SLIDER
-17
-195
-196
-228
+18
+178
+197
+211
 degradation-rate
 degradation-rate
 0
@@ -820,20 +870,20 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-22
-292
-172
-310
+23
+275
+173
+293
 ---Roads---
 11
 0.0
 1
 
 SLIDER
-17
-308
-192
-341
+18
+291
+193
+324
 track-erosion-rate
 track-erosion-rate
 0
@@ -845,20 +895,20 @@ NIL
 HORIZONTAL
 
 CHOOSER
-16
-236
-154
-281
+17
+219
+155
+264
 rest-quadrant
 rest-quadrant
 "none" "top right" "top left" "bottom right" "bottom left"
-0
+1
 
 SLIDER
-12
-494
-191
-527
+13
+477
+192
+510
 follow-track-probability
 follow-track-probability
 0
