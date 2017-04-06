@@ -159,18 +159,20 @@ end
 
 to move-turtles
   ask turtles with [ distanceTurtle? = false ] [
-    set trackDensity trackDensity + 1
-    ifelse firstRound = 0 [
-      ifelse transportState = 0 [
-        head-out-up-tracks
+    if traversable = 1 [
+      set trackDensity trackDensity + 1
+      ifelse firstRound = 0 [
+        ifelse transportState = 0 [
+          head-out-up-tracks
+        ] [
+          head-home
+        ]
       ] [
-        head-home
-      ]
-    ] [
-      ifelse transportState = 0 [
-        head-out-down-tracks
-      ] [
-        head-home
+        ifelse transportState = 0 [
+          head-out-down-tracks
+        ] [
+          head-home
+        ]
       ]
     ]
   ]
