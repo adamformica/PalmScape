@@ -1,11 +1,16 @@
 extensions [ gis vid palette ]
 
 globals [
+  roads-dataset
+  farms-dataset
+  cities-dataset
+  boundaries-dataset
   revenue
   cost
   profit
-  roads-dataset
 ]
+
+breed [ city-labels city-label ]
 
 turtles-own [
   capacity
@@ -28,22 +33,27 @@ patches-own [
   traversable
   trackDensity
   plantDistance
+  contractDistance
   degradation
+  contract?
 ]
 
 to setup
   clear-all
+  setup-environment
   setup-gis
   setup-patches
   compute-manhattan-distances
+  compute-contract-manhattan-distances
   setup-turtles
   reset-ticks
   if vid:recorder-status = "recording" [ vid:record-interface ]
 end
 
 to go
-  rest-farms
+;  rest-farms
   regenerate-farms
+  find-optimal
   move-turtles
   erode-tracks
   grow-palm-oil
@@ -63,13 +73,60 @@ to go
   if vid:recorder-status = "recording" [ vid:record-interface ]
 end
 
+to setup-environment
+
+end
+
 to setup-gis
-  let extent gis:load-dataset "C:/Users/user/Downloads/ke_major-roads/ke_major-roads.shp"
-  gis:set-world-envelope gis:envelope-of extent
+  set boundaries-dataset gis:load-dataset "C:/Users/user/Downloads/KEN_adm_shp/KEN_adm0.shp"
   set roads-dataset gis:load-dataset "C:/Users/user/Downloads/ke_major-roads/ke_major-roads.shp"
+  set farms-dataset gis:load-dataset "C:/Users/user/Downloads/ke_agriculture/ke_agriculture.shp"
+  set cities-dataset gis:load-dataset "C:/Users/user/Downloads/ke_major-towns/ke_major_cities.shp"
+  gis:set-world-envelope (gis:envelope-union-of (gis:envelope-of boundaries-dataset)
+                                                (gis:envelope-of roads-dataset)
+                                                (gis:envelope-of farms-dataset)
+                                                (gis:envelope-of cities-dataset))
+  ; satellite
+  ; use world imagery basemap in ArcGIS with extent set to country boundaries
+  import-pcolors "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/Kenya_satellite2.jpg"
+  ; boundaries
+  gis:set-drawing-color white
+  gis:draw boundaries-dataset 5.0
+  ; roads
   ask patches gis:intersecting roads-dataset [
     set pcolor 8
     set road? true
+  ]
+  ; farms
+  ask patches with [ road? = 0 ] gis:intersecting farms-dataset [
+    set pcolor 57
+    set farm? true
+    set traversable 1
+    set trackDensity 0
+    set farmCapital 0
+    set plantDistance 999999999
+    set contractDistance 999999999
+  ]
+  let proportion-farms round ( 0.05 * count patches with [ farm? = true ] )
+  ask n-of proportion-farms patches with [ farm? = true ] [
+    set contract? true
+    if contract? = true [ set plabel "C" ]
+  ]
+  ; cities
+  ask city-labels [ die ]
+  foreach gis:feature-list-of cities-dataset [ [vector-feature] ->
+    gis:set-drawing-color black
+    gis:fill vector-feature 5.0
+    let location gis:location-of (first (first (gis:vertex-lists-of vector-feature)))
+    if not empty? location
+    [ create-city-labels 1
+      [ set xcor item 0 location
+        set ycor item 1 location
+        set size 0
+        set label gis:property-value vector-feature "TOWN_NAME"
+        set label-color black
+      ]
+    ]
   ]
 end
 
@@ -78,11 +135,12 @@ to create-roads
     set traversable 1
     set trackDensity 0
     set plantDistance 999999999
+    set contractDistance 999999999
   ]
 end
 
 to create-farms
-  let potentialSites patches with [ pcolor = black ]
+  let potentialSites patches with [ traversable = 0 ]
   let nextToRoad potentialSites with [ any? neighbors4 with [ road? = true ] ]
   ask n-of number-of-farms nextToRoad [
     set pcolor 57
@@ -91,26 +149,28 @@ to create-farms
     set trackDensity 0
     set farmCapital 0
     set plantDistance 999999999
+    set contractDistance 999999999
   ]
 end
 
 to create-plants
-  let potentialSites patches with [ pcolor = black ]
+  let potentialSites patches with [ traversable = 0 ]
   let nextToRoad potentialSites with [ any? neighbors4 with [ road? = true ] ]
   ask n-of number-of-plants nextToRoad [
     set pcolor 18
     set plant? true
     set currentCapacity 0
-    set maxCapacity 100
+    set maxCapacity 10000
     set traversable 1
     set trackDensity 0
     set plantDistance 0
+    set contractDistance 999999999
   ]
 end
 
 to setup-patches
   create-roads
-  create-farms
+;  create-farms
   create-plants
 end
 
@@ -121,7 +181,7 @@ to compute-manhattan-distances
       set homeDistance 0
     ]
   ]
-  repeat 10000 [ compute-manhattan-distance-one-step ]
+  repeat 1000 [ compute-manhattan-distance-one-step ]
 end
 
 to compute-manhattan-distance-one-step
@@ -134,6 +194,35 @@ to compute-manhattan-distance-one-step
         sprout 1 [
           set distanceTurtle? true
           set homeDistance nextDistance
+          set hidden? true
+        ]
+      ]
+    ]
+    die
+  ]
+end
+
+to compute-contract-manhattan-distances
+  ask patches with [ contract? = true and traversable = 1 ] [
+    sprout 1 [
+      set distanceTurtle? true
+      set homeDistance 0
+    ]
+  ]
+  repeat 1000 [ compute-contract-manhattan-distance-one-step ]
+end
+
+to compute-contract-manhattan-distance-one-step
+  ask turtles with [ distanceTurtle? = true ] [
+    set contractDistance homeDistance
+    let nextDistance homeDistance + 1
+    let patchesToVisit neighbors4 with [ traversable = 1 and nextDistance < contractDistance ]
+    ask patchesToVisit [
+      if not any? turtles-here [
+        sprout 1 [
+          set distanceTurtle? true
+          set homeDistance nextDistance
+          set hidden? true
         ]
       ]
     ]
@@ -142,7 +231,7 @@ to compute-manhattan-distance-one-step
 end
 
 to setup-turtles
-  set-default-shape turtles "truck"
+  set-default-shape turtles "car"
 ;  start with one truck
   ask patches with [ plant? = true ] [
     sprout 1 [
@@ -159,52 +248,23 @@ end
 
 to move-turtles
   ask turtles with [ distanceTurtle? = false ] [
-    if traversable = 1 [
-      set trackDensity trackDensity + 1
-      ifelse firstRound = 0 [
-        ifelse transportState = 0 [
-          head-out-up-tracks
-        ] [
-          head-home
-        ]
-      ] [
-        ifelse transportState = 0 [
-          head-out-down-tracks
-        ] [
-          head-home
-        ]
-      ]
-    ]
-  ]
-end
-
-to head-out-up-tracks
-  if any? neighbors4 with [ traversable = 1 ] [
-    let p min-one-of neighbors4 with [ traversable = 1 ] [ trackDensity ]
-    let dir random-float 1
-    ifelse dir < follow-track-probability [
-      if [ trackDensity ] of p > trackDensity [
-        face p
-        move-to p
-      ]
+    ifelse transportState = 0 [
+      head-out
     ] [
-      if [ trackDensity ] of p < trackDensity [
-        face p
-        move-to p
-      ]
+      head-home
     ]
   ]
 end
 
-to head-out-down-tracks
+to head-out
   if any? neighbors4 with [ traversable = 1 ] [
-      let p min-one-of neighbors4 with [ traversable = 1 ] [ trackDensity ]
-      if [ trackDensity ] of p < trackDensity [
-        face p
-        move-to p
-      ]
+    let p min-one-of neighbors4 with [ traversable = 1 ] [ contractDistance ]
+    let p-min [ contractDistance ] of p
+    if p-min < contractDistance [
+      face p
+      move-to p
+    ]
   ]
-
 end
 
 to head-home
@@ -237,7 +297,7 @@ to pick-up-loads
   ask turtles with [ distanceTurtle? = false ] [
 ;    trucks below capacity pick up plam oil
     let oldCapacity capacity
-    if capacity < 5 and palmOil > 1 [
+    if capacity < 5 and palmOil > 1 and contract? = true [
       set capacity capacity + 1
       set palmOil palmOil - 1
       set farmCapital farmCapital + 1
@@ -266,6 +326,24 @@ to drop-off-loads
   ]
 end
 
+to find-optimal
+  ask patches with [ traversable = 1 ] [
+    set contractDistance 999999999
+  ]
+  let max-palmOil max [ palmOil ] of patches with [ contract? = true ]
+  ask patches with [ ( palmOil > optimal-proportion * max-palmOil ) and ( contract? = true ) ] [
+    set contractDistance 0
+  ]
+  ask patches with [ ( contract? = true ) and ( palmOil > optimal-proportion * max-palmOil ) ] [
+    sprout 1 [
+      set distanceTurtle? true
+      set homeDistance 0
+      set hidden? true
+    ]
+  ]
+  repeat 1000 [ compute-contract-manhattan-distance-one-step ]
+end
+
 to sell-oil
   ask one-of patches with [ plant? = true ] [
     if currentCapacity >= 5 [
@@ -278,14 +356,16 @@ end
 to expand-farm
   ask patches with [ farm? = true ] [
 ;    farms with enough capital expand to adjacent road (where trucks can pick up)
-    ;let nextDistance plantDistance + 1
-    if farmCapital >= 5 and any? neighbors4 with [ pcolor = black ] [
+    if farmCapital >= 5 and any? neighbors4 with [ traversable = 0 ] [
       set farmCapital farmCapital - 5
-      ask one-of neighbors4 with [ pcolor = black ] [
+      ask one-of neighbors4 with [ traversable = 0 ] [
         set pcolor 57
         set farm? true
         set traversable 1
         set trackDensity 0
+        let p random-float 1
+        ifelse p > 0.9 [ set contract? true ] [ set contract? false ]
+        if contract? [ set plabel "C" ]
         if any? neighbors4 with [ traversable = 1 ] [
           set plantDistance [ plantDistance ] of min-one-of neighbors4 with [ traversable = 1 ] [ plantDistance ] + 1
         ]
@@ -314,7 +394,7 @@ to color-plants
   let light-red-netlogo extract-rgb 18
   let dark-red-netlogo extract-rgb 14
   ask patches with [ plant? = true ] [
-    set pcolor palette:scale-gradient ( list light-red-netlogo dark-red-netlogo ) currentCapacity 0 10
+    set pcolor palette:scale-gradient ( list light-red-netlogo dark-red-netlogo ) currentCapacity 0 10000
   ]
 end
 
@@ -467,15 +547,15 @@ to regenerate-farms
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
-10
-728
-529
+3
+628
+2021
+2647
 -1
 -1
 10.0
 1
-10
+24
 1
 1
 1
@@ -483,10 +563,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--25
-25
--25
-25
+-100
+100
+-100
+100
 1
 1
 1
@@ -494,10 +574,10 @@ ticks
 30.0
 
 BUTTON
-92
-35
-155
-68
+228
+223
+291
+256
 NIL
 go
 T
@@ -511,10 +591,10 @@ NIL
 0
 
 BUTTON
-22
-35
-85
-68
+227
+184
+290
+217
 NIL
 setup
 NIL
@@ -528,10 +608,10 @@ NIL
 1
 
 MONITOR
-755
-12
-847
-57
+226
+13
+318
+58
 NIL
 revenue
 17
@@ -539,10 +619,10 @@ revenue
 11
 
 MONITOR
-754
-68
-848
-113
+225
+69
+319
+114
 NIL
 cost
 17
@@ -550,10 +630,10 @@ cost
 11
 
 PLOT
-866
-11
-1066
-161
+9
+10
+209
+160
 profit over time
 time
 profit
@@ -568,25 +648,25 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot profit"
 
 SLIDER
-20
+1112
 139
-197
+1289
 172
 growth-rate
 growth-rate
 0
 0.1
-0.01
+0.1
 0.01
 1
 NIL
 HORIZONTAL
 
 MONITOR
-754
-126
-848
-171
+225
+127
+319
+172
 NIL
 profit
 17
@@ -594,10 +674,10 @@ profit
 11
 
 MONITOR
-755
-186
-850
-231
+1327
+29
+1422
+74
 number of trucks
 count turtles
 17
@@ -605,9 +685,9 @@ count turtles
 11
 
 SLIDER
-16
+1108
 354
-189
+1281
 387
 truck-cost
 truck-cost
@@ -620,9 +700,9 @@ NIL
 HORIZONTAL
 
 SLIDER
-16
+1108
 393
-192
+1284
 426
 maintenance
 maintenance
@@ -635,10 +715,10 @@ NIL
 HORIZONTAL
 
 PLOT
-866
-327
-1066
-477
+9
+326
+209
+476
 current capacity over time
 time
 current capacity
@@ -653,40 +733,40 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot sum [ currentCapacity ] of patches with [ plant? = true ]"
 
 SLIDER
-17
+1109
 434
-189
+1281
 467
 max-trucks
 max-trucks
 0
 100
-20.0
+100.0
 10
 1
 NIL
 HORIZONTAL
 
 SLIDER
-21
+1113
 100
-194
+1286
 133
 number-of-farms
 number-of-farms
-1
-200
-126.0
+0
+2000
+2000.0
 25
 1
 NIL
 HORIZONTAL
 
 PLOT
-866
-168
-1067
-318
+9
+167
+210
+317
 farms over time
 time
 number of farms
@@ -701,24 +781,24 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot count patches with [ farm? = true ]"
 
 SLIDER
-15
+1107
 544
-188
+1280
 577
 number-of-plants
 number-of-plants
 1
 10
-5.0
+10.0
 1
 1
 NIL
 HORIZONTAL
 
 TEXTBOX
-25
+1117
 10
-175
+1267
 28
 PalmScape
 11
@@ -726,9 +806,9 @@ PalmScape
 1
 
 TEXTBOX
-24
+1116
 80
-174
+1266
 98
 ---Farms---
 11
@@ -736,9 +816,9 @@ TEXTBOX
 1
 
 TEXTBOX
-19
+1111
 336
-169
+1261
 354
 ---Trucks---
 11
@@ -746,9 +826,9 @@ TEXTBOX
 1
 
 TEXTBOX
-19
+1111
 524
-169
+1261
 542
 ---Plants---
 11
@@ -756,10 +836,10 @@ TEXTBOX
 1
 
 BUTTON
-751
-443
-851
-476
+1319
+169
+1419
+202
 NIL
 save-recording
 NIL
@@ -773,10 +853,10 @@ NIL
 1
 
 BUTTON
-753
-368
-851
-401
+1321
+94
+1419
+127
 NIL
 start-recorder
 NIL
@@ -790,10 +870,10 @@ NIL
 1
 
 BUTTON
-753
-405
-851
-439
+1321
+131
+1419
+165
 NIL
 reset-recorder
 NIL
@@ -807,24 +887,24 @@ NIL
 1
 
 SLIDER
-18
+1110
 178
-197
+1289
 211
 degradation-rate
 degradation-rate
 0
 0.1
-0.05
+0.1
 0.01
 1
 NIL
 HORIZONTAL
 
 TEXTBOX
-23
+1115
 275
-173
+1265
 293
 ---Roads---
 11
@@ -832,9 +912,9 @@ TEXTBOX
 1
 
 SLIDER
-18
+1110
 291
-193
+1285
 324
 track-erosion-rate
 track-erosion-rate
@@ -847,9 +927,9 @@ NIL
 HORIZONTAL
 
 CHOOSER
-17
+1109
 219
-155
+1247
 264
 rest-quadrant
 rest-quadrant
@@ -857,15 +937,30 @@ rest-quadrant
 0
 
 SLIDER
-13
+1105
 477
-192
+1284
 510
 follow-track-probability
 follow-track-probability
 0
 0.9
 0.0
+0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1307
+545
+1479
+578
+optimal-proportion
+optimal-proportion
+0
+1
+0.2
 0.1
 1
 NIL
