@@ -8,6 +8,8 @@ globals [
   revenue
   cost
   profit
+  max-palmOil
+  optimal-patches
 ]
 
 breed [ city-labels city-label ]
@@ -40,10 +42,10 @@ patches-own [
 
 to setup
   clear-all
-  setup-environment
   setup-gis
   setup-patches
   compute-manhattan-distances
+  assign-contracts
   compute-contract-manhattan-distances
   setup-turtles
   reset-ticks
@@ -71,10 +73,6 @@ to go
   calculate-profit
   tick
   if vid:recorder-status = "recording" [ vid:record-interface ]
-end
-
-to setup-environment
-
 end
 
 to setup-gis
@@ -106,11 +104,6 @@ to setup-gis
     set farmCapital 0
     set plantDistance 999999999
     set contractDistance 999999999
-  ]
-  let proportion-farms round ( 0.05 * count patches with [ farm? = true ] )
-  ask n-of proportion-farms patches with [ farm? = true ] [
-    set contract? true
-    if contract? = true [ set plabel "C" ]
   ]
   ; cities
   ask city-labels [ die ]
@@ -154,13 +147,14 @@ to create-farms
 end
 
 to create-plants
-  let potentialSites patches with [ traversable = 0 ]
+  let potentialSites patches with [ road? = 0 ]
   let nextToRoad potentialSites with [ any? neighbors4 with [ road? = true ] ]
   ask n-of number-of-plants nextToRoad [
     set pcolor 18
     set plant? true
+    set farm? 0
     set currentCapacity 0
-    set maxCapacity 10000
+    set maxCapacity maximum-capacity
     set traversable 1
     set trackDensity 0
     set plantDistance 0
@@ -181,7 +175,7 @@ to compute-manhattan-distances
       set homeDistance 0
     ]
   ]
-  repeat 1000 [ compute-manhattan-distance-one-step ]
+  repeat 10000 [ compute-manhattan-distance-one-step ]
 end
 
 to compute-manhattan-distance-one-step
@@ -202,6 +196,14 @@ to compute-manhattan-distance-one-step
   ]
 end
 
+to assign-contracts
+  let proportion-farms round ( 0.05 * count patches with [ farm? = true ] )
+  ask n-of proportion-farms patches with [ farm? = true and plantDistance < 999999999 ] [
+    set contract? true
+    if contract? = true [ set plabel "C" ]
+  ]
+end
+
 to compute-contract-manhattan-distances
   ask patches with [ contract? = true and traversable = 1 ] [
     sprout 1 [
@@ -209,7 +211,7 @@ to compute-contract-manhattan-distances
       set homeDistance 0
     ]
   ]
-  repeat 1000 [ compute-contract-manhattan-distance-one-step ]
+  repeat 10000 [ compute-contract-manhattan-distance-one-step ]
 end
 
 to compute-contract-manhattan-distance-one-step
@@ -287,8 +289,10 @@ to grow-palm-oil
   ask patches with [ farm? = true ] [
 ;    palm oil grows on farms at certain rate
     set palmOil palmOil + growth-rate
-    if palmOil > 0 [
+    ifelse palmOil - degradation > 0 [
       set palmOil palmOil - degradation
+    ] [
+      set palmOil 0
     ]
   ]
 end
@@ -327,21 +331,22 @@ to drop-off-loads
 end
 
 to find-optimal
-  ask patches with [ traversable = 1 ] [
-    set contractDistance 999999999
-  ]
-  let max-palmOil max [ palmOil ] of patches with [ contract? = true ]
-  ask patches with [ ( palmOil > optimal-proportion * max-palmOil ) and ( contract? = true ) ] [
-    set contractDistance 0
-  ]
-  ask patches with [ ( contract? = true ) and ( palmOil > optimal-proportion * max-palmOil ) ] [
-    sprout 1 [
-      set distanceTurtle? true
-      set homeDistance 0
-      set hidden? true
+  set max-palmOil max [ palmOil ] of patches with [ contract? = true ]
+  set optimal-patches patches with [ ( palmOil >= optimal-proportion * max-palmOil ) and ( contract? = true ) ]
+  if max [ palmOil ] of optimal-patches < 100000
+  [
+    ask patches with [ traversable = 1 ] [
+      set contractDistance 999999999
     ]
+    ask optimal-patches [
+      sprout 1 [
+        set distanceTurtle? true
+        set homeDistance 0
+        set hidden? true
+      ]
+    ]
+    repeat 10000 [ compute-contract-manhattan-distance-one-step ]
   ]
-  repeat 1000 [ compute-contract-manhattan-distance-one-step ]
 end
 
 to sell-oil
@@ -394,7 +399,7 @@ to color-plants
   let light-red-netlogo extract-rgb 18
   let dark-red-netlogo extract-rgb 14
   ask patches with [ plant? = true ] [
-    set pcolor palette:scale-gradient ( list light-red-netlogo dark-red-netlogo ) currentCapacity 0 10000
+    set pcolor palette:scale-gradient ( list light-red-netlogo dark-red-netlogo ) currentCapacity 0 maxCapacity
   ]
 end
 
@@ -422,6 +427,7 @@ to buy-trucks
 end
 
 to maintain-trucks
+  let maintenance maintenance-cost
   let numTrucks count turtles with [ distanceTurtle? = false ]
   if profit > numTrucks * maintenance [
     ask turtles with [ distanceTurtle? = false ] [
@@ -542,7 +548,12 @@ end
 
 to regenerate-farms
   ask patches with [ farm? = true ] [
-    set degradation degradation - 0.00025
+    ifelse degradation - regeneration-rate > 0 [
+      set degradation degradation - regeneration-rate
+    ] [
+      set degradation 0
+    ]
+
   ]
 end
 @#$#@#$#@
@@ -648,10 +659,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot profit"
 
 SLIDER
-1112
-139
-1289
-172
+357
+90
+534
+123
 growth-rate
 growth-rate
 0
@@ -674,20 +685,20 @@ profit
 11
 
 MONITOR
-1327
+573
 29
-1422
+668
 74
 number of trucks
-count turtles
-17
+count turtles with [ distanceTurtle? = false ]
+0
 1
 11
 
 SLIDER
-1108
 354
-1281
+354
+527
 387
 truck-cost
 truck-cost
@@ -700,15 +711,15 @@ NIL
 HORIZONTAL
 
 SLIDER
-1108
+354
 393
-1284
+530
 426
-maintenance
-maintenance
+maintenance-cost
+maintenance-cost
 0
 0.05
-0.05
+0.02
 0.01
 1
 NIL
@@ -733,25 +744,25 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot sum [ currentCapacity ] of patches with [ plant? = true ]"
 
 SLIDER
-1109
+355
 434
-1281
+527
 467
 max-trucks
 max-trucks
 0
 100
-100.0
+50.0
 10
 1
 NIL
 HORIZONTAL
 
 SLIDER
-1113
-100
-1286
-133
+358
+51
+531
+84
 number-of-farms
 number-of-farms
 0
@@ -781,24 +792,24 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot count patches with [ farm? = true ]"
 
 SLIDER
-1107
+353
 544
-1280
+526
 577
 number-of-plants
 number-of-plants
 1
-10
-10.0
+50
+20.0
 1
 1
 NIL
 HORIZONTAL
 
 TEXTBOX
-1117
+363
 10
-1267
+513
 28
 PalmScape
 11
@@ -806,19 +817,19 @@ PalmScape
 1
 
 TEXTBOX
-1116
-80
-1266
-98
+361
+31
+511
+49
 ---Farms---
 11
 0.0
 1
 
 TEXTBOX
-1111
+357
 336
-1261
+507
 354
 ---Trucks---
 11
@@ -826,9 +837,9 @@ TEXTBOX
 1
 
 TEXTBOX
-1111
+357
 524
-1261
+507
 542
 ---Plants---
 11
@@ -836,9 +847,9 @@ TEXTBOX
 1
 
 BUTTON
-1319
+565
 169
-1419
+665
 202
 NIL
 save-recording
@@ -853,9 +864,9 @@ NIL
 1
 
 BUTTON
-1321
+567
 94
-1419
+665
 127
 NIL
 start-recorder
@@ -870,9 +881,9 @@ NIL
 1
 
 BUTTON
-1321
+567
 131
-1419
+665
 165
 NIL
 reset-recorder
@@ -887,10 +898,10 @@ NIL
 1
 
 SLIDER
-1110
-178
-1289
-211
+355
+129
+534
+162
 degradation-rate
 degradation-rate
 0
@@ -902,9 +913,9 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-1115
+361
 275
-1265
+511
 293
 ---Roads---
 11
@@ -912,9 +923,9 @@ TEXTBOX
 1
 
 SLIDER
-1110
+356
 291
-1285
+531
 324
 track-erosion-rate
 track-erosion-rate
@@ -927,19 +938,19 @@ NIL
 HORIZONTAL
 
 CHOOSER
-1109
-219
-1247
-264
+354
+170
+492
+215
 rest-quadrant
 rest-quadrant
 "none" "top right" "top left" "bottom right" "bottom left"
 0
 
 SLIDER
-1105
+351
 477
-1284
+530
 510
 follow-track-probability
 follow-track-probability
@@ -952,9 +963,9 @@ NIL
 HORIZONTAL
 
 SLIDER
-1307
+553
 545
-1479
+725
 578
 optimal-proportion
 optimal-proportion
@@ -962,6 +973,36 @@ optimal-proportion
 1
 0.2
 0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+355
+228
+498
+261
+regeneration-rate
+regeneration-rate
+0
+0.01
+0.001
+0.001
+1
+NIL
+HORIZONTAL
+
+SLIDER
+756
+548
+928
+581
+maximum-capacity
+maximum-capacity
+0
+1000
+500.0
+100
 1
 NIL
 HORIZONTAL
