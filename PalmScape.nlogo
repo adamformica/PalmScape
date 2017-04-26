@@ -22,6 +22,7 @@ turtles-own [
   firstRound
   homeDistance
   distanceTurtle?
+  visitedOptimal?
 ]
 
 patches-own [
@@ -38,6 +39,7 @@ patches-own [
   contractDistance
   degradation
   contract?
+  newFarm?
 ]
 
 to setup
@@ -54,15 +56,15 @@ end
 
 to go
 ;  rest-farms
-  regenerate-farms
   find-optimal
+  regenerate-farms
   move-turtles
   erode-tracks
   grow-palm-oil
   pick-up-loads
   drop-off-loads
   sell-oil
-  expand-farm
+;  expand-farm
   color-farms
   color-roads
   color-plants
@@ -220,7 +222,7 @@ to compute-contract-manhattan-distance-one-step
     let nextDistance homeDistance + 1
     let patchesToVisit neighbors4 with [ traversable = 1 and nextDistance < contractDistance ]
     ask patchesToVisit [
-      if not any? turtles-here [
+      if not any? turtles-here with [ distanceTurtle? = true ] [
         sprout 1 [
           set distanceTurtle? true
           set homeDistance nextDistance
@@ -333,10 +335,18 @@ end
 to find-optimal
   set max-palmOil max [ palmOil ] of patches with [ contract? = true ]
   set optimal-patches patches with [ ( palmOil >= optimal-proportion * max-palmOil ) and ( contract? = true ) ]
-  if max [ palmOil ] of optimal-patches < 100000
+  ask turtles with [ distanceTurtle? = false ] [
+    if contractDistance = 0 and visitedOptimal? = 0 [
+      set visitedOptimal? true
+    ]
+  ]
+  if count turtles with [ distanceTurtle? = false and visitedOptimal? = true ] = count turtles with [ distanceTurtle? = false ]
   [
     ask patches with [ traversable = 1 ] [
       set contractDistance 999999999
+    ]
+    ask turtles with [ distanceTurtle? = false ] [
+      set visitedOptimal? 0
     ]
     ask optimal-patches [
       sprout 1 [
@@ -366,6 +376,7 @@ to expand-farm
       ask one-of neighbors4 with [ traversable = 0 ] [
         set pcolor 57
         set farm? true
+        set newFarm? true
         set traversable 1
         set trackDensity 0
         let p random-float 1
@@ -553,7 +564,6 @@ to regenerate-farms
     ] [
       set degradation 0
     ]
-
   ]
 end
 @#$#@#$#@
@@ -585,10 +595,10 @@ ticks
 30.0
 
 BUTTON
-228
-223
-291
-256
+120
+374
+183
+407
 NIL
 go
 T
@@ -602,10 +612,10 @@ NIL
 0
 
 BUTTON
-227
-184
-290
-217
+119
+335
+182
+368
 NIL
 setup
 NIL
@@ -619,10 +629,10 @@ NIL
 1
 
 MONITOR
-226
-13
-318
-58
+11
+332
+103
+377
 NIL
 revenue
 17
@@ -630,10 +640,10 @@ revenue
 11
 
 MONITOR
-225
-69
-319
-114
+10
+388
+104
+433
 NIL
 cost
 17
@@ -667,17 +677,17 @@ growth-rate
 growth-rate
 0
 0.1
-0.1
+0.01
 0.01
 1
 NIL
 HORIZONTAL
 
 MONITOR
-225
-127
-319
-172
+10
+446
+104
+491
 NIL
 profit
 17
@@ -685,10 +695,10 @@ profit
 11
 
 MONITOR
-573
-29
-668
-74
+9
+502
+104
+547
 number of trucks
 count turtles with [ distanceTurtle? = false ]
 0
@@ -726,10 +736,10 @@ NIL
 HORIZONTAL
 
 PLOT
-9
-326
-209
-476
+11
+165
+211
+315
 current capacity over time
 time
 current capacity
@@ -751,9 +761,9 @@ SLIDER
 max-trucks
 max-trucks
 0
-100
-50.0
-10
+300
+31.0
+1
 1
 NIL
 HORIZONTAL
@@ -774,10 +784,10 @@ NIL
 HORIZONTAL
 
 PLOT
-9
-167
-210
-317
+766
+27
+967
+177
 farms over time
 time
 number of farms
@@ -800,7 +810,7 @@ number-of-plants
 number-of-plants
 1
 50
-20.0
+30.0
 1
 1
 NIL
@@ -906,7 +916,7 @@ degradation-rate
 degradation-rate
 0
 0.1
-0.1
+0.01
 0.01
 1
 NIL
@@ -971,8 +981,8 @@ optimal-proportion
 optimal-proportion
 0
 1
-0.2
-0.1
+0.04
+0.01
 1
 NIL
 HORIZONTAL
@@ -980,14 +990,14 @@ HORIZONTAL
 SLIDER
 355
 228
-498
+527
 261
 regeneration-rate
 regeneration-rate
 0
 0.01
-0.001
-0.001
+0.01
+0.0001
 1
 NIL
 HORIZONTAL
@@ -1001,7 +1011,7 @@ maximum-capacity
 maximum-capacity
 0
 1000
-500.0
+1000.0
 100
 1
 NIL
