@@ -10,6 +10,7 @@ globals [
   profit
   max-palmOil
   optimal-patches
+  ticks-per-year
 ]
 
 breed [ city-labels city-label ]
@@ -40,6 +41,7 @@ patches-own [
   degradation
   contract?
   newFarm?
+  growthFactor
 ]
 
 to setup
@@ -50,13 +52,14 @@ to setup
   assign-contracts
   compute-contract-manhattan-distances
   setup-turtles
+  setup-time
   reset-ticks
   if vid:recorder-status = "recording" [ vid:record-interface ]
 end
 
 to go
 ;  rest-farms
-  find-optimal
+;  find-optimal
   regenerate-farms
   move-turtles
   erode-tracks
@@ -75,6 +78,15 @@ to go
   calculate-profit
   tick
   if vid:recorder-status = "recording" [ vid:record-interface ]
+end
+
+to setup-time
+;  let average-trip-distance sum [ plantDistance ] of patches with [ contract? = true ] / count patches with [ contract? = true ]
+  let average-trip-distance 25
+  let trips-per-month 1
+  let pickup-factor 1.25
+  let months-per-year 12
+  set ticks-per-year average-trip-distance * trips-per-month * pickup-factor * months-per-year
 end
 
 to setup-gis
@@ -251,16 +263,25 @@ to setup-turtles
 end
 
 to move-turtles
+  if movement-strategy = "optimal" [
+    move-turtles-optimal
+  ]
+  if movement-strategy = "track density" [
+    move-turtles-track-density
+  ]
+end
+
+to move-turtles-optimal
   ask turtles with [ distanceTurtle? = false ] [
     ifelse transportState = 0 [
-      head-out
+      head-out-optimal
     ] [
       head-home
     ]
   ]
 end
 
-to head-out
+to head-out-optimal
   if any? neighbors4 with [ traversable = 1 ] [
     let p min-one-of neighbors4 with [ traversable = 1 ] [ contractDistance ]
     let p-min [ contractDistance ] of p
@@ -279,6 +300,54 @@ to head-home
   ]
 end
 
+to move-turtles-track-density
+  ask turtles with [ distanceTurtle? = false ] [
+    set trackDensity trackDensity + 1
+    ifelse firstRound = 0 [
+      ifelse transportState = 0 [
+        head-out-up-tracks
+      ] [
+        head-home
+      ]
+    ] [
+      ifelse transportState = 0 [
+        head-out-down-tracks
+      ] [
+        head-home
+      ]
+    ]
+  ]
+end
+
+
+to head-out-up-tracks
+  if any? neighbors4 with [ traversable = 1 ] [
+    let p min-one-of neighbors4 with [ traversable = 1 ] [ trackDensity ]
+    let dir random-float 1
+    ifelse dir < follow-track-probability [
+      if [ trackDensity ] of p > trackDensity [
+        face p
+        move-to p
+      ]
+    ] [
+      if [ trackDensity ] of p < trackDensity [
+        face p
+        move-to p
+      ]
+    ]
+  ]
+end
+
+to head-out-down-tracks
+  if any? neighbors4 with [ traversable = 1 ] [
+      let p min-one-of neighbors4 with [ traversable = 1 ] [ trackDensity ]
+      if [ trackDensity ] of p < trackDensity [
+        face p
+        move-to p
+      ]
+  ]
+end
+
 to erode-tracks
   ask patches [
     if trackDensity >= track-erosion-rate [
@@ -288,9 +357,20 @@ to erode-tracks
 end
 
 to grow-palm-oil
+  let tickInYear ticks mod ticks-per-year
+  let ticks-per-month ticks-per-year / 12
+  let start-growing-season ticks-per-month * 5
+  let end-growing-season ticks-per-month * 9
+  ask patches with [ farm? = true ] [
+    ifelse tickInYear > start-growing-season and tickInYear < end-growing-season [
+      set growthFactor growth-rate
+    ] [
+      set growthFactor 0 - growth-rate
+    ]
+  ]
   ask patches with [ farm? = true ] [
 ;    palm oil grows on farms at certain rate
-    set palmOil palmOil + growth-rate
+    set palmOil palmOil + growthFactor
     ifelse palmOil - degradation > 0 [
       set palmOil palmOil - degradation
     ] [
@@ -677,8 +757,8 @@ growth-rate
 growth-rate
 0
 0.1
-0.01
-0.01
+0.1
+0.001
 1
 NIL
 HORIZONTAL
@@ -916,7 +996,7 @@ degradation-rate
 degradation-rate
 0
 0.1
-0.1
+0.0
 0.01
 1
 NIL
@@ -941,7 +1021,7 @@ track-erosion-rate
 track-erosion-rate
 0
 0.5
-0.1
+0.5
 0.1
 1
 NIL
@@ -996,7 +1076,7 @@ regeneration-rate
 regeneration-rate
 0
 0.01
-0.001
+0.0
 0.001
 1
 NIL
@@ -1032,6 +1112,34 @@ NIL
 NIL
 NIL
 NIL
+1
+
+PLOT
+467
+138
+667
+288
+growth rate over time
+NIL
+NIL
+0.0
+10.0
+0.0
+0.02
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot [ growthFactor ] of one-of patches with [ contract? = true ]"
+
+CHOOSER
+464
+415
+602
+460
+movement-strategy
+movement-strategy
+"track density" "optimal"
 1
 
 @#$#@#$#@
