@@ -20,7 +20,7 @@ turtles-own [
   currentTruckCapacity
   speed
   health
-    ; 0 - heading out, 1 - returning
+  transportState  ; 0 - heading out, 1 - picking up ; 2 - returning; 3 - dropping off
   firstRound
   homeDistance
   distanceTurtle?
@@ -63,11 +63,9 @@ to go
 ;  rest-farms
 ;  find-optimal
   regenerate-farms
-  move-turtles
+  go-turtles
   erode-tracks
   grow-palm-oil
-  pick-up-loads
-  drop-off-loads
   sell-oil
   expand-farm
   maintain-farms
@@ -82,6 +80,23 @@ to go
   calculate-profit
   tick
   if vid:recorder-status = "recording" [ vid:record-interface ]
+end
+
+to go-turtles
+  ask turtles with [ distanceTurtle? = false ] [
+    if transportState = 0 [
+      move-turtles
+    ]
+    if transportState = 1 [
+      pick-up-loads
+    ]
+    if transportState = 2 [
+      move-turtles
+    ]
+    if transportState = 3 [
+      drop-off-loads
+    ]
+  ]
 end
 
 to setup-time
@@ -303,6 +318,10 @@ to head-out-optimal
       move-to p
     ]
   ]
+  if contractDistance = 0 [
+    ;show "head-out-optimal"
+    set transportState transportState + 1
+  ]
 end
 
 to head-home
@@ -310,6 +329,10 @@ to head-home
     let p min-one-of neighbors4 with [ traversable = 1 ] [ plantDistance ]
     face p
     move-to p
+  ]
+  if plant? = true [
+    show "head-home"
+    set transportState transportState + 1
   ]
 end
 
@@ -398,14 +421,20 @@ to pick-up-loads
     let pick-up-amount ( max-truck-capacity / load-unload-time )
     let oldCapacity currentTruckCapacity
     if currentTruckCapacity < max-truck-capacity and palmOil > pick-up-amount and contract? = true [
-      set currentTruckCapacity currentTruckCapacity + pick-up-amount
-      set palmOil palmOil - pick-up-amount
-      set farmCapital farmCapital + pick-up-amount
+      let remainingTruckCapacity max-truck-capacity - currentTruckCapacity
+      let toPickUp min list remainingTruckCapacity pick-up-amount
+      set currentTruckCapacity currentTruckCapacity + toPickUp
+      set palmOil palmOil - toPickUp
+      set farmCapital farmCapital + toPickUp
       set degradation degradation + degradation-rate
+    ]
+    if currentTruckCapacity = oldCapacity [
+      set transportState transportState - 1
     ]
     ifelse currentTruckCapacity >= max-truck-capacity [
       set color magenta
-      set transportState 1
+      show "pick-up-loads"
+      set transportState transportState + 1
     ] [
       set color blue
     ]
@@ -416,7 +445,7 @@ to drop-off-loads
   let drop-off-amount ( max-truck-capacity / load-unload-time )
   ask turtles with [ distanceTurtle? = false ] [
 ;    trucks at full capacity drop off loads at plants
-    if currentTruckCapacity > 0 and transportState = 1 and plant? = true [
+    if currentTruckCapacity > 0 and transportState = 3 and plant? = true [
 ;      palm oil in trucks processed and converted to revenue
       let remaining min list currentTruckCapacity drop-off-amount
       if currentPlantCapacity + remaining <= max-plant-capacity [
