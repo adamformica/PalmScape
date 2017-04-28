@@ -11,15 +11,16 @@ globals [
   max-palmOil
   optimal-patches
   ticks-per-year
+  load-unload-time
 ]
 
 breed [ city-labels city-label ]
 
 turtles-own [
-  capacity
+  currentTruckCapacity
   speed
   health
-  transportState
+    ; 0 - heading out, 1 - returning
   firstRound
   homeDistance
   distanceTurtle?
@@ -32,8 +33,7 @@ patches-own [
   plant?
   palmOil
   farmCapital
-  currentCapacity
-  maxCapacity
+  currentPlantCapacity
   traversable
   trackDensity
   plantDistance
@@ -42,6 +42,8 @@ patches-own [
   contract?
   newFarm?
   growthFactor
+  baseMapColor
+  developed
 ]
 
 to setup
@@ -67,7 +69,9 @@ to go
   pick-up-loads
   drop-off-loads
   sell-oil
-;  expand-farm
+  expand-farm
+  maintain-farms
+  liquidate-farm
   color-farms
   color-roads
   color-plants
@@ -87,6 +91,7 @@ to setup-time
   let pickup-factor 1.25
   let months-per-year 12
   set ticks-per-year average-trip-distance * trips-per-month * pickup-factor * months-per-year
+  set load-unload-time average-trip-distance / 3
 end
 
 to setup-gis
@@ -101,6 +106,9 @@ to setup-gis
   ; satellite
   ; use world imagery basemap in ArcGIS with extent set to country boundaries
   import-pcolors "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/Kenya_satellite2.jpg"
+  ask patches [
+    set baseMapColor pcolor
+  ]
   ; boundaries
   gis:set-drawing-color white
   gis:draw boundaries-dataset 5.0
@@ -108,6 +116,7 @@ to setup-gis
   ask patches gis:intersecting roads-dataset [
     set pcolor 8
     set road? true
+    set developed 1
   ]
   ; farms
   ask patches with [ road? = 0 ] gis:intersecting farms-dataset [
@@ -115,9 +124,10 @@ to setup-gis
     set farm? true
     set traversable 1
     set trackDensity 0
-    set farmCapital 0
+    set farmCapital 1 + random-float 3
     set plantDistance 999999999
     set contractDistance 999999999
+    set developed 1
   ]
   ; cities
   ask city-labels [ die ]
@@ -143,6 +153,7 @@ to create-roads
     set trackDensity 0
     set plantDistance 999999999
     set contractDistance 999999999
+    set developed 1
   ]
 end
 
@@ -154,9 +165,10 @@ to create-farms
     set farm? true
     set traversable 1
     set trackDensity 0
-    set farmCapital 0
+    set farmCapital 1 + random-float 3
     set plantDistance 999999999
     set contractDistance 999999999
+    set developed 1
   ]
 end
 
@@ -167,12 +179,12 @@ to create-plants
     set pcolor 18
     set plant? true
     set farm? 0
-    set currentCapacity 0
-    set maxCapacity maximum-capacity
+    set currentPlantCapacity 0
     set traversable 1
     set trackDensity 0
     set plantDistance 0
     set contractDistance 999999999
+    set developed 1
   ]
 end
 
@@ -272,6 +284,7 @@ to move-turtles
 end
 
 to move-turtles-optimal
+  find-optimal
   ask turtles with [ distanceTurtle? = false ] [
     ifelse transportState = 0 [
       head-out-optimal
@@ -365,8 +378,7 @@ to grow-palm-oil
     ifelse tickInYear > start-growing-season and tickInYear < end-growing-season [
       set growthFactor growth-rate
     ] [
-      set growthFactor -growth-rate
-
+      set growthFactor 0 - growth-rate
     ]
   ]
   ask patches with [ farm? = true ] [
@@ -383,14 +395,15 @@ end
 to pick-up-loads
   ask turtles with [ distanceTurtle? = false ] [
 ;    trucks below capacity pick up plam oil
-    let oldCapacity capacity
-    if capacity < 5 and palmOil > 1 and contract? = true [
-      set capacity capacity + 1
-      set palmOil palmOil - 1
-      set farmCapital farmCapital + 1
+    let pick-up-amount ( max-truck-capacity / load-unload-time )
+    let oldCapacity currentTruckCapacity
+    if currentTruckCapacity < max-truck-capacity and palmOil > pick-up-amount and contract? = true [
+      set currentTruckCapacity currentTruckCapacity + pick-up-amount
+      set palmOil palmOil - pick-up-amount
+      set farmCapital farmCapital + pick-up-amount
       set degradation degradation + degradation-rate
     ]
-    ifelse capacity = 5 [
+    ifelse currentTruckCapacity >= max-truck-capacity [
       set color magenta
       set transportState 1
     ] [
@@ -400,14 +413,18 @@ to pick-up-loads
 end
 
 to drop-off-loads
+  let drop-off-amount ( max-truck-capacity / load-unload-time )
   ask turtles with [ distanceTurtle? = false ] [
 ;    trucks at full capacity drop off loads at plants
-    if capacity >= 5 and plant? = true [
+    if currentTruckCapacity > 0 and transportState = 1 and plant? = true [
 ;      palm oil in trucks processed and converted to revenue
-      if currentCapacity <= maxCapacity - 5 [
-        set capacity capacity - 5
+      let remaining min list currentTruckCapacity drop-off-amount
+      if currentPlantCapacity + remaining <= max-plant-capacity [
+        set currentTruckCapacity currentTruckCapacity - remaining
+        set currentPlantCapacity currentPlantCapacity + remaining
+      ]
+      if currentTruckCapacity = 0 [
         set transportState 0
-        set currentCapacity currentCapacity + 5
       ]
     ]
   ]
@@ -442,9 +459,9 @@ end
 
 to sell-oil
   ask one-of patches with [ plant? = true ] [
-    if currentCapacity >= 5 [
-      set currentCapacity currentCapacity - 5
-      set revenue revenue + 5
+    if currentPlantCapacity >= max-truck-capacity [
+      set currentPlantCapacity currentPlantCapacity - max-truck-capacity
+      set revenue revenue + max-truck-capacity
     ]
   ]
 end
@@ -452,16 +469,17 @@ end
 to expand-farm
   ask patches with [ farm? = true ] [
 ;    farms with enough capital expand to adjacent road (where trucks can pick up)
-    if farmCapital >= 5 and any? neighbors4 with [ traversable = 0 ] [
+    if farmCapital >= 5 and any? neighbors4 with [ developed = 0 ] [
       set farmCapital farmCapital - 5
-      ask one-of neighbors4 with [ traversable = 0 ] [
+      ask one-of neighbors4 with [ developed = 0 ] [
         set pcolor 57
         set farm? true
         set newFarm? true
         set traversable 1
+        set developed 1
         set trackDensity 0
         let p random-float 1
-        ifelse p > 0.9 [ set contract? true ] [ set contract? false ]
+        ifelse p > 0.1 [ set contract? true ] [ set contract? false ]
         if contract? [ set plabel "C" ]
         if any? neighbors4 with [ traversable = 1 ] [
           set plantDistance [ plantDistance ] of min-one-of neighbors4 with [ traversable = 1 ] [ plantDistance ] + 1
@@ -471,11 +489,30 @@ to expand-farm
   ]
 end
 
+to liquidate-farm
+  ask patches with [ farm? = true ] [
+    if farmCapital < 0 [
+      set farm? false
+      set farmCapital 1 + random-float 3
+      set pcolor 35
+      set contract? 0
+      set plabel ""
+      set developed 0
+    ]
+  ]
+end
+
+to maintain-farms
+  ask patches with [ farm? = true ] [
+    set farmCapital farmCapital - farm-maintenance-cost
+  ]
+end
+
 to color-farms
   let light-green-netlogo extract-rgb 57
   let dark-green-netlogo extract-rgb 53
   ask patches with [ farm? = true ] [
-    set pcolor palette:scale-gradient ( list light-green-netlogo dark-green-netlogo ) palmOil 0 10
+    set pcolor palette:scale-gradient ( list light-green-netlogo dark-green-netlogo ) palmOil 0 1000
   ]
 end
 
@@ -491,7 +528,7 @@ to color-plants
   let light-red-netlogo extract-rgb 18
   let dark-red-netlogo extract-rgb 14
   ask patches with [ plant? = true ] [
-    set pcolor palette:scale-gradient ( list light-red-netlogo dark-red-netlogo ) currentCapacity 0 maxCapacity
+    set pcolor palette:scale-gradient ( list light-red-netlogo dark-red-netlogo ) currentPlantCapacity 0 max-plant-capacity
   ]
 end
 
@@ -499,7 +536,7 @@ to buy-trucks
   let numTrucks count turtles with [ distanceTurtle? = false ]
   ask one-of patches with [ plant? = true ] [
 ;    company buys trucks if profits exceed threshold
-    if profit > truck-cost and currentCapacity <= 0.75 * maxCapacity and numTrucks < max-trucks [
+    if profit > truck-cost and currentPlantCapacity <= 0.75 * max-plant-capacity and numTrucks < max-trucks [
 ;      wait 2
       sprout 1 [
         set color blue
@@ -757,9 +794,9 @@ SLIDER
 growth-rate
 growth-rate
 0
+50
+50.0
 0.1
-0.1
-0.001
 1
 NIL
 HORIZONTAL
@@ -832,7 +869,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plot sum [ currentCapacity ] of patches with [ plant? = true ]"
+"default" 1.0 0 -16777216 true "" "plot sum [ currentPlantCapacity ] of patches with [ plant? = true ]"
 
 SLIDER
 233
@@ -843,8 +880,8 @@ max-trucks
 max-trucks
 0
 300
-30.0
-10
+1.0
+1
 1
 NIL
 HORIZONTAL
@@ -865,10 +902,10 @@ NIL
 HORIZONTAL
 
 PLOT
-1698
-24
-1899
-174
+442
+238
+643
+388
 farms over time
 time
 number of farms
@@ -891,7 +928,7 @@ number-of-plants
 number-of-plants
 1
 50
-30.0
+1.0
 1
 1
 NIL
@@ -1086,13 +1123,13 @@ HORIZONTAL
 SLIDER
 231
 435
-403
+428
 468
-maximum-capacity
-maximum-capacity
+max-plant-capacity
+max-plant-capacity
 0
-1000
-1000.0
+100000000
+1.0E8
 100
 1
 NIL
@@ -1116,10 +1153,10 @@ NIL
 1
 
 PLOT
-467
-138
-667
-288
+439
+61
+639
+211
 growth rate over time
 NIL
 NIL
@@ -1141,7 +1178,37 @@ CHOOSER
 movement-strategy
 movement-strategy
 "track density" "optimal"
+1
+
+SLIDER
+237
+531
+400
+564
+farm-maintenance-cost
+farm-maintenance-cost
 0
+0.01
+0.005
+0.001
+1
+NIL
+HORIZONTAL
+
+SLIDER
+433
+483
+605
+516
+max-truck-capacity
+max-truck-capacity
+0
+400
+400.0
+5
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
