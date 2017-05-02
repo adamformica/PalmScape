@@ -300,13 +300,13 @@ end
 
 to move-turtles-optimal
   find-optimal
-  ask turtles with [ distanceTurtle? = false ] [
+;  ask turtles with [ distanceTurtle? = false ] [
     ifelse transportState = 0 [
       head-out-optimal
     ] [
       head-home
     ]
-  ]
+;  ]
 end
 
 to head-out-optimal
@@ -319,7 +319,7 @@ to head-out-optimal
     ]
   ]
   if contractDistance = 0 [
-    ;show "head-out-optimal"
+;    show "head-out-optimal"
     set transportState transportState + 1
   ]
 end
@@ -416,7 +416,7 @@ to grow-palm-oil
 end
 
 to pick-up-loads
-  ask turtles with [ distanceTurtle? = false ] [
+;  ask turtles with [ distanceTurtle? = false ] [
 ;    trucks below capacity pick up plam oil
     let pick-up-amount ( max-truck-capacity / load-unload-time )
     let oldCapacity currentTruckCapacity
@@ -429,21 +429,20 @@ to pick-up-loads
       set degradation degradation + degradation-rate
     ]
     if currentTruckCapacity = oldCapacity [
+;      show "pick-up-loads subtract"
       set transportState transportState - 1
     ]
-    ifelse currentTruckCapacity >= max-truck-capacity [
+    if currentTruckCapacity >= max-truck-capacity [
       set color magenta
-      ;show "pick-up-loads"
+;      show "pick-up-loads add"
       set transportState transportState + 1
-    ] [
-      set color blue
     ]
-  ]
+;  ]
 end
 
 to drop-off-loads
   let drop-off-amount ( max-truck-capacity / load-unload-time )
-  ask turtles with [ distanceTurtle? = false ] [
+;  ask turtles with [ distanceTurtle? = false ] [
 ;    trucks at full capacity drop off loads at plants
     if currentTruckCapacity > 0 and transportState = 3 and plant? = true [
 ;      palm oil in trucks processed and converted to revenue
@@ -454,8 +453,12 @@ to drop-off-loads
       ]
       if currentTruckCapacity = 0 [
         set transportState 0
+        set color blue
       ]
-    ]
+;    ]
+;    if currentTruckCapacity <= max-truck-capacity [
+;      set color blue
+;    ]
   ]
 end
 
@@ -824,7 +827,7 @@ growth-rate
 growth-rate
 0
 50
-50.0
+20.1
 0.1
 1
 NIL
@@ -908,8 +911,8 @@ SLIDER
 max-trucks
 max-trucks
 0
-300
-1.0
+50
+50.0
 1
 1
 NIL
@@ -957,7 +960,7 @@ number-of-plants
 number-of-plants
 1
 50
-1.0
+2.0
 1
 1
 NIL
