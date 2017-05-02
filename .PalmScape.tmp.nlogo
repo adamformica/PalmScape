@@ -469,7 +469,7 @@ to find-optimal
     if contractDistance = 0 and visitedOptimal? = 0 [
       set visitedOptimal? true
     ]
-;  ]
+  ]
   if count turtles with [ distanceTurtle? = false and visitedOptimal? = true ] = count turtles with [ distanceTurtle? = false ]
   [
     ask patches with [ traversable = 1 ] [
