@@ -1077,13 +1077,13 @@ PENS
 SLIDER
 237
 531
-407
+426
 564
 farm-maintenance-cost
 farm-maintenance-cost
 0
 0.01
-0.003
+0.001
 0.001
 1
 NIL
