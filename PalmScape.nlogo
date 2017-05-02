@@ -61,11 +61,13 @@ end
 
 to go
 ;  rest-farms
-;  find-optimal
+  find-optimal
   regenerate-farms
-  go-turtles
-  erode-tracks
   grow-palm-oil
+  head-out
+  pick-up-loads
+  head-home
+  drop-off-loads
   sell-oil
   expand-farm
   maintain-farms
@@ -80,23 +82,6 @@ to go
   calculate-profit
   tick
   if vid:recorder-status = "recording" [ vid:record-interface ]
-end
-
-to go-turtles
-  ask turtles with [ distanceTurtle? = false ] [
-    if transportState = 0 [
-      move-turtles
-    ]
-    if transportState = 1 [
-      pick-up-loads
-    ]
-    if transportState = 2 [
-      move-turtles
-    ]
-    if transportState = 3 [
-      drop-off-loads
-    ]
-  ]
 end
 
 to setup-time
@@ -289,105 +274,33 @@ to setup-turtles
   ]
 end
 
-to move-turtles
-  if movement-strategy = "optimal" [
-    move-turtles-optimal
-  ]
-  if movement-strategy = "track density" [
-    move-turtles-track-density
-  ]
-end
-
-to move-turtles-optimal
-  find-optimal
-;  ask turtles with [ distanceTurtle? = false ] [
-    ifelse transportState = 0 [
-      head-out-optimal
-    ] [
-      head-home
+to head-out
+  ask turtles with [ distanceTurtle? = false and transportState = 0 ] [
+    if any? neighbors4 with [ traversable = 1 ] [
+      let p min-one-of neighbors4 with [ traversable = 1 ] [ contractDistance ]
+      let p-min [ contractDistance ] of p
+      if p-min < contractDistance [
+        face p
+        move-to p
+      ]
     ]
-;  ]
-end
-
-to head-out-optimal
-  if any? neighbors4 with [ traversable = 1 ] [
-    let p min-one-of neighbors4 with [ traversable = 1 ] [ contractDistance ]
-    let p-min [ contractDistance ] of p
-    if p-min < contractDistance [
-      face p
-      move-to p
+    if contractDistance = 0 [
+      ;    show "head-out-optimal"
+      set transportState transportState + 1
     ]
-  ]
-  if contractDistance = 0 [
-;    show "head-out-optimal"
-    set transportState transportState + 1
-  ]
+]
 end
 
 to head-home
-  if any? neighbors4 with [ traversable = 1 ] [
-    let p min-one-of neighbors4 with [ traversable = 1 ] [ plantDistance ]
-    face p
-    move-to p
-  ]
-  if plant? = true [
-    ;show "head-home"
-    set transportState transportState + 1
-  ]
-end
-
-to move-turtles-track-density
-  ask turtles with [ distanceTurtle? = false ] [
-    set trackDensity trackDensity + 1
-    ifelse firstRound = 0 [
-      ifelse transportState = 0 [
-        head-out-up-tracks
-      ] [
-        head-home
-      ]
-    ] [
-      ifelse transportState = 0 [
-        head-out-down-tracks
-      ] [
-        head-home
-      ]
+  ask turtles with [ distanceTurtle? = false and transportState = 2 ] [
+    if any? neighbors4 with [ traversable = 1 ] [
+      let p min-one-of neighbors4 with [ traversable = 1 ] [ plantDistance ]
+      face p
+      move-to p
     ]
-  ]
-end
-
-
-to head-out-up-tracks
-  if any? neighbors4 with [ traversable = 1 ] [
-    let p min-one-of neighbors4 with [ traversable = 1 ] [ trackDensity ]
-    let dir random-float 1
-    ifelse dir < follow-track-probability [
-      if [ trackDensity ] of p > trackDensity [
-        face p
-        move-to p
-      ]
-    ] [
-      if [ trackDensity ] of p < trackDensity [
-        face p
-        move-to p
-      ]
-    ]
-  ]
-end
-
-to head-out-down-tracks
-  if any? neighbors4 with [ traversable = 1 ] [
-      let p min-one-of neighbors4 with [ traversable = 1 ] [ trackDensity ]
-      if [ trackDensity ] of p < trackDensity [
-        face p
-        move-to p
-      ]
-  ]
-end
-
-to erode-tracks
-  ask patches [
-    if trackDensity >= track-erosion-rate [
-      set trackDensity trackDensity - track-erosion-rate
+    if plant? = true [
+      ;show "head-home"
+      set transportState transportState + 1
     ]
   ]
 end
@@ -416,7 +329,7 @@ to grow-palm-oil
 end
 
 to pick-up-loads
-;  ask turtles with [ distanceTurtle? = false ] [
+  ask turtles with [ distanceTurtle? = false and transportState = 1 ] [
 ;    trucks below capacity pick up plam oil
     let pick-up-amount ( max-truck-capacity / load-unload-time )
     let oldCapacity currentTruckCapacity
@@ -429,20 +342,19 @@ to pick-up-loads
       set degradation degradation + degradation-rate
     ]
     if currentTruckCapacity = oldCapacity [
-;      show "pick-up-loads subtract"
       set transportState transportState - 1
     ]
     if currentTruckCapacity >= max-truck-capacity [
       set color magenta
-;      show "pick-up-loads add"
+;      show "pick-up-loads"
       set transportState transportState + 1
     ]
-;  ]
+  ]
 end
 
 to drop-off-loads
   let drop-off-amount ( max-truck-capacity / load-unload-time )
-;  ask turtles with [ distanceTurtle? = false ] [
+  ask turtles with [ distanceTurtle? = false and transportState = 3 ] [
 ;    trucks at full capacity drop off loads at plants
     if currentTruckCapacity > 0 and transportState = 3 and plant? = true [
 ;      palm oil in trucks processed and converted to revenue
@@ -455,21 +367,18 @@ to drop-off-loads
         set transportState 0
         set color blue
       ]
-;    ]
-;    if currentTruckCapacity <= max-truck-capacity [
-;      set color blue
-;    ]
+    ]
   ]
 end
 
 to find-optimal
   set max-palmOil max [ palmOil ] of patches with [ contract? = true ]
   set optimal-patches patches with [ ( palmOil >= optimal-proportion * max-palmOil ) and ( contract? = true ) ]
-;  ask turtles with [ distanceTurtle? = false ] [
+  ask turtles with [ distanceTurtle? = false ] [
     if contractDistance = 0 and visitedOptimal? = 0 [
       set visitedOptimal? true
     ]
-;  ]
+  ]
   if count turtles with [ distanceTurtle? = false and visitedOptimal? = true ] = count turtles with [ distanceTurtle? = false ]
   [
     ask patches with [ traversable = 1 ] [
@@ -511,7 +420,7 @@ to expand-farm
         set developed 1
         set trackDensity 0
         let p random-float 1
-        ifelse p > 0.1 [ set contract? true ] [ set contract? false ]
+        ifelse p > 0.9 [ set contract? true ] [ set contract? false ]
         if contract? [ set plabel "C" ]
         if any? neighbors4 with [ traversable = 1 ] [
           set plantDistance [ plantDistance ] of min-one-of neighbors4 with [ traversable = 1 ] [ plantDistance ] + 1
@@ -911,18 +820,18 @@ SLIDER
 max-trucks
 max-trucks
 0
-500
-38.0
+50
+50.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-1698
-247
-1871
-280
+1712
+97
+1885
+130
 number-of-farms
 number-of-farms
 0
@@ -960,7 +869,7 @@ number-of-plants
 number-of-plants
 1
 50
-2.0
+50.0
 1
 1
 NIL
@@ -1072,55 +981,15 @@ degradation-rate
 NIL
 HORIZONTAL
 
-TEXTBOX
-1699
-289
-1849
-307
----Roads---
-11
-0.0
-1
-
-SLIDER
-1694
-305
-1869
-338
-track-erosion-rate
-track-erosion-rate
-0
-0.5
-0.5
-0.1
-1
-NIL
-HORIZONTAL
-
 CHOOSER
-1699
-192
-1837
-237
+1713
+42
+1851
+87
 rest-quadrant
 rest-quadrant
 "none" "top right" "top left" "bottom right" "bottom left"
 0
-
-SLIDER
-1695
-367
-1874
-400
-follow-track-probability
-follow-track-probability
-0
-0.9
-0.0
-0.1
-1
-NIL
-HORIZONTAL
 
 SLIDER
 232
@@ -1201,16 +1070,6 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "plot [ growthFactor ] of one-of patches with [ contract? = true ]"
-
-CHOOSER
-464
-415
-602
-460
-movement-strategy
-movement-strategy
-"track density" "optimal"
-1
 
 SLIDER
 237
