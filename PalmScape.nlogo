@@ -1,4 +1,4 @@
-extensions [ gis vid palette ]
+extensions [ gis palette ]
 
 globals [
   roads-dataset
@@ -56,7 +56,6 @@ to setup
   setup-turtles
   setup-time
   reset-ticks
-  if vid:recorder-status = "recording" [ vid:record-interface ]
 end
 
 to go
@@ -81,12 +80,11 @@ to go
   trucks-breakdown
   calculate-profit
   tick
-  if vid:recorder-status = "recording" [ vid:record-interface ]
 end
 
 to setup-time
 ;  let average-trip-distance sum [ plantDistance ] of patches with [ contract? = true ] / count patches with [ contract? = true ]
-  let average-trip-distance 25
+;  let average-trip-distance 25
   let trips-per-month 1
   let pickup-factor 1.25
   let months-per-year 12
@@ -308,13 +306,15 @@ end
 to grow-palm-oil
   let tickInYear ticks mod ticks-per-year
   let ticks-per-month ticks-per-year / 12
-  let start-growing-season ticks-per-month * 5
-  let end-growing-season ticks-per-month * 9
+;  let start-growing-season ticks-per-month * 5
+  let start-growing-season ticks-per-month * start-growing-month
+;  let end-growing-season ticks-per-month * 9
+  let end-growing-season ticks-per-month * end-growing-month
   ask patches with [ farm? = true ] [
     ifelse tickInYear > start-growing-season and tickInYear < end-growing-season [
       set growthFactor growth-rate
     ] [
-      set growthFactor 0 - growth-rate
+      set growthFactor 0 - expiration-rate
     ]
   ]
   ask patches with [ farm? = true ] [
@@ -338,7 +338,7 @@ to pick-up-loads
       let toPickUp min list remainingTruckCapacity pick-up-amount
       set currentTruckCapacity currentTruckCapacity + toPickUp
       set palmOil palmOil - toPickUp
-      set farmCapital farmCapital + toPickUp
+      set farmCapital farmCapital + toPickUp * farmer-crop-unit-price
       set degradation degradation + degradation-rate
     ]
     if currentTruckCapacity = oldCapacity [
@@ -410,8 +410,8 @@ end
 to expand-farm
   ask patches with [ farm? = true ] [
 ;    farms with enough capital expand to adjacent road (where trucks can pick up)
-    if farmCapital >= 5 and any? neighbors4 with [ developed = 0 ] [
-      set farmCapital farmCapital - 5
+    if farmCapital >= farm-expansion-cost and any? neighbors4 with [ developed = 0 ] [
+      set farmCapital farmCapital - farm-expansion-cost
       ask one-of neighbors4 with [ developed = 0 ] [
         set pcolor 57
         set farm? true
@@ -526,39 +526,6 @@ end
 
 to calculate-profit
   set profit ( revenue - cost )
-end
-
-to start-recorder
-  carefully [ vid:start-recorder ] [ user-message error-message ]
-end
-
-to reset-recorder
-  let message (word
-    "If you reset the recorder, the current recording will be lost."
-    "Are you sure you want to reset the recorder?")
-  if vid:recorder-status = "inactive" or user-yes-or-no? message [
-    vid:reset-recorder
-  ]
-end
-
-to save-recording
-  if vid:recorder-status = "inactive" [
-    user-message "The recorder is inactive. There is nothing to save."
-    stop
-  ]
-  ; prompt user for movie location
-  user-message (word
-    "Choose a name for your movie file (the "
-    ".mp4 extension will be automatically added).")
-  let path user-new-file
-  if not is-string? path [ stop ]  ; stop if user canceled
-  ; export the movie
-  carefully [
-    vid:save-recording path
-    user-message (word "Exported movie to " path ".")
-  ] [
-    user-message error-message
-  ]
 end
 
 to rest-farms
@@ -823,8 +790,8 @@ SLIDER
 max-trucks
 max-trucks
 0
-50
-30.0
+500
+99.0
 1
 1
 NIL
@@ -872,7 +839,7 @@ number-of-plants
 number-of-plants
 1
 50
-10.0
+1.0
 1
 1
 NIL
@@ -916,57 +883,6 @@ TEXTBOX
 ---Plants---
 11
 0.0
-1
-
-BUTTON
-1918
-114
-2018
-147
-NIL
-save-recording
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-1920
-39
-2018
-72
-NIL
-start-recorder
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-1920
-76
-2018
-110
-NIL
-reset-recorder
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
 1
 
 SLIDER
@@ -1075,16 +991,16 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot [ growthFactor ] of one-of patches with [ contract? = true ]"
 
 SLIDER
-237
+230
 531
-407
+397
 564
 farm-maintenance-cost
 farm-maintenance-cost
 0
+0.1
 0.01
-0.003
-0.001
+0.01
 1
 NIL
 HORIZONTAL
@@ -1100,6 +1016,143 @@ max-truck-capacity
 400
 400.0
 5
+1
+NIL
+HORIZONTAL
+
+PLOT
+662
+240
+862
+390
+farm capital
+NIL
+NIL
+0.0
+20.0
+0.0
+20.0
+false
+false
+"" ""
+PENS
+"default" 2.0 1 -16777216 true "" "histogram [ farmCapital ] of patches with [ farm? = true ]"
+
+SLIDER
+707
+110
+879
+143
+farm-expansion-cost
+farm-expansion-cost
+0
+100
+4.0
+1
+1
+NIL
+HORIZONTAL
+
+PLOT
+673
+423
+873
+573
+palm oil
+NIL
+NIL
+0.0
+2000.0
+0.0
+20.0
+false
+false
+"" ""
+PENS
+"default" 100.0 1 -16777216 true "" "histogram [ palmOil ] of patches with [ farm? = true ]"
+
+SLIDER
+975
+407
+1147
+440
+average-trip-distance
+average-trip-distance
+0
+100
+10.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+706
+166
+878
+199
+expiration-rate
+expiration-rate
+0
+10
+1.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+935
+221
+1112
+254
+farmer-crop-unit-price
+farmer-crop-unit-price
+0
+1
+0.05
+0.01
+1
+NIL
+HORIZONTAL
+
+MONITOR
+446
+415
+539
+460
+number of farms
+count patches with [ farm? = true ]
+0
+1
+11
+
+SLIDER
+942
+295
+1114
+328
+start-growing-month
+start-growing-month
+0
+12
+6.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+960
+351
+1132
+384
+end-growing-month
+end-growing-month
+0
+12
+9.0
+1
 1
 NIL
 HORIZONTAL
@@ -1446,7 +1499,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0
+NetLogo 6.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
