@@ -707,7 +707,7 @@ growth-rate
 growth-rate
 0
 50
-5.0
+4.0
 1
 1
 NIL
@@ -792,7 +792,7 @@ max-trucks
 max-trucks
 0
 500
-105.0
+48.0
 1
 1
 NIL
@@ -840,7 +840,7 @@ number-of-plants
 number-of-plants
 1
 50
-20.0
+10.0
 1
 1
 NIL
@@ -895,7 +895,7 @@ degradation-rate
 degradation-rate
 0
 0.1
-0.1
+0.0
 0.01
 1
 NIL
@@ -1000,7 +1000,7 @@ farm-maintenance-cost
 farm-maintenance-cost
 0
 1
-0.0
+0.02
 0.01
 1
 NIL
@@ -1015,7 +1015,7 @@ max-truck-capacity
 max-truck-capacity
 0
 400
-50.0
+25.0
 5
 1
 NIL
@@ -1095,8 +1095,8 @@ SLIDER
 expiration-rate
 expiration-rate
 0
-50
-10.0
+10
+5.0
 1
 1
 NIL
@@ -1167,7 +1167,7 @@ initial-farm-capital
 initial-farm-capital
 0
 100
-10.0
+5.0
 1
 1
 NIL
