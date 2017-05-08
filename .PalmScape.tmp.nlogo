@@ -93,7 +93,7 @@ end
 
 to setup-time
 ;  let average-trip-distance sum [ plantDistance ] of patches with [ contract? = true ] / count patches with [ contract? = true ]
-  set average-trip-distance 2
+  set average-trip-distance 10
   let trips-per-month 1
   let pickup-factor 1.25
   let months-per-year 12
@@ -314,8 +314,8 @@ to head-home
 end
 
 to grow-palm-oil
-  set start-growing-month 5
-  set end-growing-month 9
+  set start-growing-month
+  set end-growing-month 12
   let tickInYear ticks mod ticks-per-year
   let ticks-per-month ticks-per-year / 12
   let start-growing-season ticks-per-month * start-growing-month
@@ -324,7 +324,7 @@ to grow-palm-oil
     ifelse tickInYear > start-growing-season and tickInYear < end-growing-season [
       set growthFactor growth-rate
     ] [
-      set growthFactor 0 - growth-rate ; if crop expires at different rate, could also be separate variable expiration-rate
+      set growthFactor 0 - expiration-rate ; if crop expires at different rate, could also be separate variable expiration-rate
     ]
   ]
   ask patches with [ farm? = true ] [
@@ -718,8 +718,8 @@ SLIDER
 growth-rate
 growth-rate
 0
-0.1
-0.01
+0.2
+0.18
 0.01
 1
 NIL
@@ -932,7 +932,7 @@ optimal-proportion
 optimal-proportion
 0
 1
-0.05
+0.95
 0.05
 1
 NIL
@@ -1012,7 +1012,7 @@ farm-maintenance-cost
 farm-maintenance-cost
 0
 0.01
-0.001
+0.004
 0.001
 1
 NIL
@@ -1027,14 +1027,14 @@ farm capital
 NIL
 NIL
 0.0
-100.0
+15.0
 0.0
-20.0
+300.0
 false
 false
 "" ""
 PENS
-"default" 10.0 1 -16777216 true "" "histogram [ farmCapital ] of patches with [ farm? = true ]"
+"default" 1.0 1 -16777216 true "" "histogram [ farmCapital ] of patches with [ contract? = true ]"
 
 PLOT
 896
@@ -1047,12 +1047,12 @@ NIL
 0.0
 10.0
 0.0
-20.0
+300.0
 false
 false
 "" ""
 PENS
-"default" 1.0 1 -16777216 true "" "histogram [ palmOil ] of patches with [ farm? = true ]"
+"default" 1.0 1 -16777216 true "" "histogram [ palmOil ] of patches with [ contract? = true ]"
 
 MONITOR
 672
@@ -1074,6 +1074,21 @@ TEXTBOX
 11
 0.0
 1
+
+SLIDER
+232
+469
+407
+502
+expiration-rate
+expiration-rate
+0
+0.2
+0.18
+0.01
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
