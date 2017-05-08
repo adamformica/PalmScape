@@ -12,6 +12,15 @@ globals [
   optimal-patches
   ticks-per-year
   load-unload-time
+  ; farms
+  farm-expansion-cost
+  farmer-crop-unit-price
+  start-growing-month
+  end-growing-month
+  initial-farm-capital
+  ; trucks
+  max-truck-capacity
+  average-trip-distance
 ]
 
 breed [ city-labels city-label ]
@@ -84,7 +93,7 @@ end
 
 to setup-time
 ;  let average-trip-distance sum [ plantDistance ] of patches with [ contract? = true ] / count patches with [ contract? = true ]
-;  let average-trip-distance 25
+  set average-trip-distance 2
   let trips-per-month 1
   let pickup-factor 1.25
   let months-per-year 12
@@ -117,13 +126,13 @@ to setup-gis
     set developed 1
   ]
   ; farms
+  set initial-farm-capital 3
   ask patches with [ road? = 0 ] gis:intersecting farms-dataset [
     set pcolor 57
     set farm? true
     set traversable 1
     set trackDensity 0
-;    set farmCapital 1 + random-float 3
-    set farmCapital random-float initial-farm-capital
+    set farmCapital 1 + random-float initial-farm-capital
     set plantDistance 999999999
     set contractDistance 999999999
     set developed 1
@@ -305,17 +314,17 @@ to head-home
 end
 
 to grow-palm-oil
+  set start-growing-month 5
+  set end-growing-month 9
   let tickInYear ticks mod ticks-per-year
   let ticks-per-month ticks-per-year / 12
-;  let start-growing-season ticks-per-month * 5
   let start-growing-season ticks-per-month * start-growing-month
-;  let end-growing-season ticks-per-month * 9
   let end-growing-season ticks-per-month * end-growing-month
   ask patches with [ farm? = true ] [
     ifelse tickInYear > start-growing-season and tickInYear < end-growing-season [
       set growthFactor growth-rate
     ] [
-      set growthFactor 0 - expiration-rate
+      set growthFactor 0 - growth-rate ; if crop expires at different rate, could also be separate variable expiration-rate
     ]
   ]
   ask patches with [ farm? = true ] [
@@ -330,6 +339,8 @@ to grow-palm-oil
 end
 
 to pick-up-loads
+  set farmer-crop-unit-price 1
+  set max-truck-capacity 5
   ask turtles with [ distanceTurtle? = false and transportState = 1 ] [
 ;    trucks below capacity pick up plam oil
     let pick-up-amount ( max-truck-capacity / load-unload-time )
@@ -409,6 +420,7 @@ to sell-oil
 end
 
 to expand-farm
+  set farm-expansion-cost 5
   ask patches with [ farm? = true ] [
 ;    farms with enough capital expand to adjacent road (where trucks can pick up)
     if farmCapital >= farm-expansion-cost and any? neighbors4 with [ developed = 0 ] [
@@ -457,7 +469,7 @@ to color-farms
   let light-green-netlogo extract-rgb 57
   let dark-green-netlogo extract-rgb 53
   ask patches with [ farm? = true ] [
-    set pcolor palette:scale-gradient ( list light-green-netlogo dark-green-netlogo ) palmOil 0 1000
+    set pcolor palette:scale-gradient ( list light-green-netlogo dark-green-netlogo ) palmOil 0 10
   ]
 end
 
@@ -700,15 +712,15 @@ PENS
 
 SLIDER
 233
-52
-410
-85
+49
+412
+82
 growth-rate
 growth-rate
 0
-50
-4.0
-1
+0.1
+0.01
+0.01
 1
 NIL
 HORIZONTAL
@@ -736,10 +748,10 @@ count turtles with [ distanceTurtle? = false ]
 11
 
 SLIDER
-439
-46
-612
-79
+231
+237
+404
+270
 truck-cost
 truck-cost
 1
@@ -751,10 +763,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-439
-85
-615
-118
+231
+276
+407
+309
 maintenance-cost
 maintenance-cost
 0
@@ -784,25 +796,25 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot sum [ currentPlantCapacity ] of patches with [ plant? = true ]"
 
 SLIDER
-440
-126
-612
-159
+232
+317
+404
+350
 max-trucks
 max-trucks
 0
-500
-48.0
-1
+300
+30.0
+10
 1
 NIL
 HORIZONTAL
 
 SLIDER
-1712
-97
-1885
-130
+1675
+94
+1848
+127
 number-of-farms
 number-of-farms
 0
@@ -814,10 +826,10 @@ NIL
 HORIZONTAL
 
 PLOT
-667
-203
-868
-353
+668
+194
+869
+344
 farms over time
 time
 number of farms
@@ -832,15 +844,15 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot count patches with [ farm? = true ]"
 
 SLIDER
-434
-391
-607
-424
+444
+55
+617
+88
 number-of-plants
 number-of-plants
 1
 50
-10.0
+30.0
 1
 1
 NIL
@@ -867,20 +879,20 @@ TEXTBOX
 1
 
 TEXTBOX
-442
-28
-592
-46
+234
+219
+384
+237
 ---Trucks---
 11
 0.0
 1
 
 TEXTBOX
-441
-367
-591
-385
+451
+31
+601
+49
 ---Plants---
 11
 0.0
@@ -888,34 +900,34 @@ TEXTBOX
 
 SLIDER
 233
-132
+91
 412
-165
+124
 degradation-rate
 degradation-rate
 0
 0.1
-0.0
+0.1
 0.01
 1
 NIL
 HORIZONTAL
 
 CHOOSER
-1713
-42
-1851
-87
+1676
+39
+1814
+84
 rest-quadrant
 rest-quadrant
 "none" "top right" "top left" "bottom right" "bottom left"
 0
 
 SLIDER
-434
-261
-606
-294
+231
+358
+403
+391
 optimal-proportion
 optimal-proportion
 0
@@ -927,40 +939,40 @@ NIL
 HORIZONTAL
 
 SLIDER
-230
-174
-409
-207
+233
+132
+412
+165
 regeneration-rate
 regeneration-rate
 0
 0.01
-0.0
+0.001
 0.001
 1
 NIL
 HORIZONTAL
 
 SLIDER
-432
-435
-609
-468
+442
+99
+619
+132
 max-plant-capacity
 max-plant-capacity
 0
-100000000
-1.0E8
+1000
+1000.0
 100
 1
 NIL
 HORIZONTAL
 
 BUTTON
-436
-311
-572
-344
+230
+402
+366
+435
 eliminate-30-trucks
 ask n-of 30 turtles with [ distanceTurtle? = false ] [ die ]
 NIL
@@ -974,10 +986,10 @@ NIL
 1
 
 PLOT
-664
-26
-864
-176
+665
+17
+865
+167
 growth rate over time
 NIL
 NIL
@@ -992,40 +1004,25 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot [ growthFactor ] of one-of patches with [ contract? = true ]"
 
 SLIDER
-228
-400
-410
-433
+232
+175
+413
+208
 farm-maintenance-cost
 farm-maintenance-cost
 0
-1
-0.02
 0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-439
-170
-611
-203
-max-truck-capacity
-max-truck-capacity
-0
-400
-25.0
-5
+0.001
+0.001
 1
 NIL
 HORIZONTAL
 
 PLOT
-896
-28
-1096
-178
+897
+19
+1097
+169
 farm capital
 NIL
 NIL
@@ -1039,139 +1036,44 @@ false
 PENS
 "default" 10.0 1 -16777216 true "" "histogram [ farmCapital ] of patches with [ farm? = true ]"
 
-SLIDER
-228
-217
-409
-250
-farm-expansion-cost
-farm-expansion-cost
-0
-10000000000
-1.0E10
-1
-1
-NIL
-HORIZONTAL
-
 PLOT
-895
-204
-1095
-354
+896
+195
+1096
+345
 palm oil
 NIL
 NIL
 0.0
-2000.0
+10.0
 0.0
 20.0
 false
 false
 "" ""
 PENS
-"default" 100.0 1 -16777216 true "" "histogram [ palmOil ] of patches with [ farm? = true ]"
-
-SLIDER
-438
-215
-610
-248
-average-trip-distance
-average-trip-distance
-0
-100
-10.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-233
-90
-405
-123
-expiration-rate
-expiration-rate
-0
-10
-5.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-225
-259
-410
-292
-farmer-crop-unit-price
-farmer-crop-unit-price
-0
-0.1
-0.02
-0.01
-1
-NIL
-HORIZONTAL
+"default" 1.0 1 -16777216 true "" "histogram [ palmOil ] of patches with [ farm? = true ]"
 
 MONITOR
-671
-380
-764
-425
+672
+371
+765
+416
 number of farms
 count patches with [ farm? = true ]
 0
 1
 11
 
-SLIDER
-232
-306
-404
-339
-start-growing-month
-start-growing-month
-0
-12
+TEXTBOX
+1678
+15
+1828
+33
+--Inactive--
+11
 0.0
 1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-230
-355
-402
-388
-end-growing-month
-end-growing-month
-0
-12
-12.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-232
-443
-404
-476
-initial-farm-capital
-initial-farm-capital
-0
-100
-5.0
-1
-1
-NIL
-HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
