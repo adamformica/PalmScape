@@ -132,7 +132,8 @@ to setup-gis
     set farm? true
     set traversable 1
     set trackDensity 0
-    set farmCapital 1 + random-float initial-farm-capital
+;    set farmCapital 1 + random-float initial-farm-capital
+    set farmCapital random-float initial-farm-capital
     set plantDistance 999999999
     set contractDistance 999999999
     set developed 1
@@ -637,10 +638,10 @@ ticks
 30.0
 
 BUTTON
-120
-374
-183
-407
+668
+92
+731
+125
 NIL
 go
 T
@@ -654,10 +655,10 @@ NIL
 0
 
 BUTTON
-119
-335
-182
-368
+667
+53
+730
+86
 NIL
 setup
 NIL
@@ -671,10 +672,10 @@ NIL
 1
 
 MONITOR
-11
-332
-103
-377
+8
+170
+100
+215
 NIL
 revenue
 17
@@ -682,13 +683,13 @@ revenue
 11
 
 MONITOR
-10
-388
-104
-433
+112
+169
+206
+214
 NIL
 cost
-17
+0
 1
 11
 
@@ -711,9 +712,9 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot profit"
 
 SLIDER
-233
+471
 49
-412
+650
 82
 growth-rate
 growth-rate
@@ -726,21 +727,21 @@ NIL
 HORIZONTAL
 
 MONITOR
-10
-446
-104
-491
+7
+224
+101
+269
 NIL
 profit
-17
+0
 1
 11
 
 MONITOR
-9
-502
-104
-547
+4
+440
+99
+485
 number of trucks
 count turtles with [ distanceTurtle? = false ]
 0
@@ -748,10 +749,10 @@ count turtles with [ distanceTurtle? = false ]
 11
 
 SLIDER
-231
-237
-404
-270
+466
+279
+639
+312
 truck-cost
 truck-cost
 1
@@ -763,10 +764,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-231
-276
-407
-309
+466
+318
+642
+351
 maintenance-cost
 maintenance-cost
 0
@@ -778,11 +779,11 @@ NIL
 HORIZONTAL
 
 PLOT
-11
-165
-211
-315
-current capacity over time
+5
+279
+205
+429
+plant capacity over time
 time
 current capacity
 0.0
@@ -796,10 +797,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot sum [ currentPlantCapacity ] of patches with [ plant? = true ]"
 
 SLIDER
-232
-317
-404
-350
+467
+359
+639
+392
 max-trucks
 max-trucks
 0
@@ -825,29 +826,11 @@ number-of-farms
 NIL
 HORIZONTAL
 
-PLOT
-668
-194
-869
-344
-farms over time
-time
-number of farms
-0.0
-10.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "plot count patches with [ farm? = true ]"
-
 SLIDER
-444
-55
-617
-88
+466
+510
+639
+543
 number-of-plants
 number-of-plants
 1
@@ -859,9 +842,9 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-237
+475
 10
-387
+625
 28
 PalmScape
 11
@@ -869,9 +852,9 @@ PalmScape
 1
 
 TEXTBOX
-235
+473
 31
-385
+623
 49
 ---Farms---
 11
@@ -879,29 +862,29 @@ TEXTBOX
 1
 
 TEXTBOX
-234
-219
-384
-237
+469
+261
+619
+279
 ---Trucks---
 11
 0.0
 1
 
 TEXTBOX
-451
-31
-601
-49
+473
+486
+623
+504
 ---Plants---
 11
 0.0
 1
 
 SLIDER
-233
+471
 91
-412
+650
 124
 degradation-rate
 degradation-rate
@@ -924,24 +907,24 @@ rest-quadrant
 0
 
 SLIDER
-231
-358
-403
-391
+466
+400
+638
+433
 optimal-proportion
 optimal-proportion
 0
 1
-0.95
+0.05
 0.05
 1
 NIL
 HORIZONTAL
 
 SLIDER
-233
+471
 132
-412
+650
 165
 regeneration-rate
 regeneration-rate
@@ -954,10 +937,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-442
-99
-619
-132
+464
+554
+641
+587
 max-plant-capacity
 max-plant-capacity
 0
@@ -969,10 +952,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-230
-402
-366
-435
+465
+444
+601
+477
 eliminate-30-trucks
 ask n-of 30 turtles with [ distanceTurtle? = false ] [ die ]
 NIL
@@ -986,10 +969,10 @@ NIL
 1
 
 PLOT
-665
-17
-865
-167
+229
+11
+429
+161
 growth rate over time
 NIL
 NIL
@@ -1004,25 +987,25 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot [ growthFactor ] of one-of patches with [ contract? = true ]"
 
 SLIDER
-232
+470
 175
-413
+651
 208
 farm-maintenance-cost
 farm-maintenance-cost
 0
 0.01
-0.004
+0.002
 0.001
 1
 NIL
 HORIZONTAL
 
 PLOT
-897
-19
-1097
-169
+227
+334
+427
+484
 farm capital
 NIL
 NIL
@@ -1037,11 +1020,11 @@ PENS
 "default" 1.0 1 -16777216 true "" "histogram [ farmCapital ] of patches with [ contract? = true ]"
 
 PLOT
-896
-195
-1096
-345
-palm oil
+228
+171
+428
+321
+crop
 NIL
 NIL
 0.0
@@ -1055,10 +1038,10 @@ PENS
 "default" 1.0 1 -16777216 true "" "histogram [ palmOil ] of patches with [ contract? = true ]"
 
 MONITOR
-672
-371
-765
-416
+226
+495
+319
+540
 number of farms
 count patches with [ farm? = true ]
 0
@@ -1076,19 +1059,37 @@ TEXTBOX
 1
 
 SLIDER
-232
-469
-407
-502
+466
+217
+655
+250
 expiration-rate
 expiration-rate
 0
 0.2
-0.18
+0.07
 0.01
 1
 NIL
 HORIZONTAL
+
+PLOT
+1672
+146
+1873
+296
+farms over time
+time
+number of farms
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot count patches with [ farm? = true ]"
 
 @#$#@#$#@
 ## WHAT IS IT?
