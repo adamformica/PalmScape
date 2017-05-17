@@ -102,17 +102,17 @@ to setup-time
 end
 
 to setup-gis
-  set boundaries-dataset gis:load-dataset "C:/Users/user/Downloads/KEN_adm_shp/KEN_adm0.shp"
-  set roads-dataset gis:load-dataset "C:/Users/user/Downloads/ke_major-roads/ke_major-roads.shp"
-  set farms-dataset gis:load-dataset "C:/Users/user/Downloads/ke_agriculture/ke_agriculture.shp"
-  set cities-dataset gis:load-dataset "C:/Users/user/Downloads/ke_major-towns/ke_major_cities.shp"
+  set boundaries-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/KEN_adm0.shp"
+  set roads-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/ke_major-roads.shp"
+  set farms-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/ke_agriculture.shp"
+  set cities-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/ke_major_cities.shp"
   gis:set-world-envelope (gis:envelope-union-of (gis:envelope-of boundaries-dataset)
                                                 (gis:envelope-of roads-dataset)
                                                 (gis:envelope-of farms-dataset)
                                                 (gis:envelope-of cities-dataset))
   ; satellite
   ; use world imagery basemap in ArcGIS with extent set to country boundaries
-  import-pcolors "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/Kenya_satellite2.jpg"
+  import-pcolors "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/Kenya_satellite.jpg"
   ask patches [
     set baseMapColor pcolor
   ]
@@ -611,10 +611,10 @@ to regenerate-farms
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-3
-628
-2021
-2647
+6
+1541
+2024
+3560
 -1
 -1
 10.0
@@ -945,7 +945,7 @@ max-plant-capacity
 max-plant-capacity
 0
 1000
-1000.0
+400.0
 100
 1
 NIL
@@ -969,10 +969,10 @@ NIL
 1
 
 PLOT
-229
-11
-429
-161
+226
+10
+426
+160
 growth rate over time
 NIL
 NIL
@@ -1002,10 +1002,10 @@ NIL
 HORIZONTAL
 
 PLOT
-227
-334
-427
-484
+224
+333
+424
+483
 farm capital
 NIL
 NIL
@@ -1020,10 +1020,10 @@ PENS
 "default" 1.0 1 -16777216 true "" "histogram [ farmCapital ] of patches with [ contract? = true ]"
 
 PLOT
-228
-171
-428
-321
+225
+170
+425
+320
 crop
 NIL
 NIL
@@ -1038,10 +1038,10 @@ PENS
 "default" 1.0 1 -16777216 true "" "histogram [ palmOil ] of patches with [ contract? = true ]"
 
 MONITOR
-226
-495
-319
-540
+223
+494
+316
+539
 number of farms
 count patches with [ farm? = true ]
 0
