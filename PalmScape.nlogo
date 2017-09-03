@@ -3,7 +3,7 @@ extensions [ gis palette ]
 globals [
   roads-dataset
   farms-dataset
-  cities-dataset
+;  cities-dataset
   boundaries-dataset
   revenue
   cost
@@ -102,17 +102,17 @@ to setup-time
 end
 
 to setup-gis
-  set boundaries-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/KEN_adm0.shp"
-  set roads-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/ke_major-roads.shp"
-  set farms-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/ke_agriculture.shp"
-  set cities-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/ke_major_cities.shp"
+  set boundaries-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/Malaysia_data/sabah.shp"
+  set roads-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/Malaysia_data/sabah_roads.shp"
+  set farms-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/Malaysia_data/sabah_plantations.shp"
+;  set cities-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/ke_major_cities.shp"
   gis:set-world-envelope (gis:envelope-union-of (gis:envelope-of boundaries-dataset)
                                                 (gis:envelope-of roads-dataset)
-                                                (gis:envelope-of farms-dataset)
-                                                (gis:envelope-of cities-dataset))
+                                                (gis:envelope-of farms-dataset))
+;                                                (gis:envelope-of cities-dataset))
   ; satellite
   ; use world imagery basemap in ArcGIS with extent set to country boundaries
-  import-pcolors "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/Kenya_satellite.jpg"
+  import-pcolors "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/Malaysia_data/sabah_satellite.jpg"
   ask patches [
     set baseMapColor pcolor
   ]
@@ -139,21 +139,21 @@ to setup-gis
     set developed 1
   ]
   ; cities
-  ask city-labels [ die ]
-  foreach gis:feature-list-of cities-dataset [ [vector-feature] ->
-    gis:set-drawing-color black
-    gis:fill vector-feature 5.0
-    let location gis:location-of (first (first (gis:vertex-lists-of vector-feature)))
-    if not empty? location
-    [ create-city-labels 1
-      [ set xcor item 0 location
-        set ycor item 1 location
-        set size 0
-        set label gis:property-value vector-feature "TOWN_NAME"
-        set label-color black
-      ]
-    ]
-  ]
+;  ask city-labels [ die ]
+;  foreach gis:feature-list-of cities-dataset [ [vector-feature] ->
+;    gis:set-drawing-color black
+;    gis:fill vector-feature 5.0
+;    let location gis:location-of (first (first (gis:vertex-lists-of vector-feature)))
+;    if not empty? location
+;    [ create-city-labels 1
+;      [ set xcor item 0 location
+;        set ycor item 1 location
+;        set size 0
+;        set label gis:property-value vector-feature "TOWN_NAME"
+;        set label-color black
+;      ]
+;    ]
+;  ]
 end
 
 to create-roads
