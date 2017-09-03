@@ -102,9 +102,9 @@ to setup-time
 end
 
 to setup-gis
-  set boundaries-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/Malaysia_data/sabah.shp"
-  set roads-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/Malaysia_data/sabah_roads.shp"
-  set farms-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/Malaysia_data/sabah_plantations.shp"
+  set boundaries-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/sabah.shp"
+  set roads-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/sabah_roads.shp"
+  set farms-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/sabah_plantations.shp"
 ;  set cities-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/ke_major_cities.shp"
   gis:set-world-envelope (gis:envelope-union-of (gis:envelope-of boundaries-dataset)
                                                 (gis:envelope-of roads-dataset)
@@ -112,7 +112,7 @@ to setup-gis
 ;                                                (gis:envelope-of cities-dataset))
   ; satellite
   ; use world imagery basemap in ArcGIS with extent set to country boundaries
-  import-pcolors "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/Malaysia_data/sabah_satellite.jpg"
+  import-pcolors "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/sabah_satellite.jpg"
   ask patches [
     set baseMapColor pcolor
   ]
