@@ -21,6 +21,7 @@ globals [
   ; trucks
   max-truck-capacity
   average-trip-distance
+  risk-dataset
 ]
 
 breed [ city-labels city-label ]
@@ -53,6 +54,7 @@ patches-own [
   growthFactor
   baseMapColor
   developed
+  risk
 ]
 
 to setup
@@ -102,20 +104,22 @@ to setup-time
 end
 
 to setup-gis
-  set boundaries-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/sabah.shp"
-  set roads-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/sabah_roads.shp"
-  set farms-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/sabah_plantations.shp"
+  set risk-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/Sensonomic/Innovation forum/farm_risk_map.asc"
+  set boundaries-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/Sensonomic/Innovation forum/keningau_borders.shp"
+  set roads-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/Sensonomic/Innovation forum/keningau_roads.shp"
+  set farms-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/Sensonomic/Innovation forum/keningau_plantations.shp"
 ;  set cities-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/ke_major_cities.shp"
   gis:set-world-envelope (gis:envelope-union-of (gis:envelope-of boundaries-dataset)
                                                 (gis:envelope-of roads-dataset)
-                                                (gis:envelope-of farms-dataset))
+                                                (gis:envelope-of farms-dataset)
+                                                (gis:envelope-of risk-dataset))
 ;                                                (gis:envelope-of cities-dataset))
   ; satellite
   ; use world imagery basemap in ArcGIS with extent set to country boundaries
-  import-pcolors "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/sabah_satellite.jpg"
-  ask patches [
-    set baseMapColor pcolor
-  ]
+;  import-pcolors "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/sabah_satellite.jpg"
+;  ask patches [
+;    set baseMapColor pcolor
+;  ]
   ; boundaries
   gis:set-drawing-color white
   gis:draw boundaries-dataset 5.0
@@ -138,6 +142,17 @@ to setup-gis
     set contractDistance 999999999
     set developed 1
   ]
+  ; risk
+  gis:apply-raster risk-dataset risk
+  ; Now, just to make sure it worked, we'll color each patch by its
+  ; risk value.
+  let min-risk gis:minimum-of risk-dataset
+  let max-risk gis:maximum-of risk-dataset
+  ask patches
+  [ ; note the use of the "<= 0 or >= 0" technique to filter out
+    ; "not a number" values, as discussed in the documentation.
+    if (risk <= 0) or (risk >= 0)
+    [ set pcolor scale-color red risk min-risk max-risk ] ]
   ; cities
 ;  ask city-labels [ die ]
 ;  foreach gis:feature-list-of cities-dataset [ [vector-feature] ->
@@ -156,6 +171,21 @@ to setup-gis
 ;  ]
 end
 
+to display-risk-in-patches
+  ; This is the preferred way of copying values from a raster dataset
+  ; into a patch variable: in one step, using gis:apply-raster.
+  gis:apply-raster risk-dataset risk
+  ; Now, just to make sure it worked, we'll color each patch by its
+  ; risk value.
+  let min-risk gis:minimum-of risk-dataset
+  let max-risk gis:maximum-of risk-dataset
+  ask patches
+  [ ; note the use of the "<= 0 or >= 0" technique to filter out
+    ; "not a number" values, as discussed in the documentation.
+    if (risk <= 0) or (risk >= 0)
+    [ set pcolor scale-color red risk min-risk max-risk ] ]
+end
+
 to create-roads
   ask patches with [ road? = true ] [
     set traversable 1
@@ -166,24 +196,25 @@ to create-roads
   ]
 end
 
-to create-farms
-  let potentialSites patches with [ traversable = 0 ]
-  let nextToRoad potentialSites with [ any? neighbors4 with [ road? = true ] ]
-  ask n-of number-of-farms nextToRoad [
-    set pcolor 57
-    set farm? true
-    set traversable 1
-    set trackDensity 0
-    set farmCapital 1 + random-float 3
-    set plantDistance 999999999
-    set contractDistance 999999999
-    set developed 1
-  ]
-end
+;to create-farms
+;  let potentialSites patches with [ traversable = 0 ]
+;  let nextToRoad potentialSites with [ any? neighbors4 with [ road? = true ] ]
+;  ask n-of number-of-farms nextToRoad [
+;    set pcolor 57
+;    set farm? true
+;    set traversable 1
+;    set trackDensity 0
+;    set farmCapital 1 + random-float 3
+;    set plantDistance 999999999
+;    set contractDistance 999999999
+;    set developed 1
+;  ]
+;end
 
 to create-plants
   let potentialSites patches with [ road? = 0 ]
   let nextToRoad potentialSites with [ any? neighbors4 with [ road? = true ] ]
+  random-seed 41
   ask n-of number-of-plants nextToRoad [
     set pcolor 18
     set plant? true
