@@ -22,6 +22,9 @@ globals [
   max-truck-capacity
   average-trip-distance
   risk-dataset
+  low-risk-farms
+  min-risk
+  max-risk
 ]
 
 breed [ city-labels city-label ]
@@ -72,6 +75,7 @@ end
 to go
 ;  rest-farms
   find-optimal
+;  find-optimal-risk
   regenerate-farms
   grow-palm-oil
   head-out
@@ -82,7 +86,7 @@ to go
   expand-farm
   maintain-farms
   liquidate-farm
-  color-farms
+;  color-farms
   color-roads
   color-plants
   buy-trucks
@@ -104,11 +108,11 @@ to setup-time
 end
 
 to setup-gis
-  set risk-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/Sensonomic/Innovation forum/farm_risk_map.asc"
-  set boundaries-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/Sensonomic/Innovation forum/keningau_borders.shp"
-  set roads-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/Sensonomic/Innovation forum/keningau_roads.shp"
-  set farms-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/Sensonomic/Innovation forum/keningau_plantations.shp"
-;  set cities-dataset gis:load-dataset "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/ke_major_cities.shp"
+  set risk-dataset gis:load-dataset "C:/Users/Sensonomic Admin/Dropbox/Oxford/DPhil/Sensonomic/Innovation forum/farm_risk_map.asc"
+  set boundaries-dataset gis:load-dataset "C:/Users/Sensonomic Admin/Dropbox/Oxford/DPhil/Sensonomic/Innovation forum/keningau_borders.shp"
+  set roads-dataset gis:load-dataset "C:/Users/Sensonomic Admin/Dropbox/Oxford/DPhil/Sensonomic/Innovation forum/keningau_roads.shp"
+  set farms-dataset gis:load-dataset "C:/Users/Sensonomic Admin/Dropbox/Oxford/DPhil/Sensonomic/Innovation forum/keningau_plantations.shp"
+;  set cities-dataset gis:load-dataset "C:/Users/Sensonomic Admin/Dropbox/Oxford/DPhil/NetLogo/PalmScape/ke_major_cities.shp"
   gis:set-world-envelope (gis:envelope-union-of (gis:envelope-of boundaries-dataset)
                                                 (gis:envelope-of roads-dataset)
                                                 (gis:envelope-of farms-dataset)
@@ -116,22 +120,24 @@ to setup-gis
 ;                                                (gis:envelope-of cities-dataset))
   ; satellite
   ; use world imagery basemap in ArcGIS with extent set to country boundaries
-;  import-pcolors "C:/Users/user/Dropbox/Oxford/DPhil/NetLogo/PalmScape/sabah_satellite.jpg"
-;  ask patches [
-;    set baseMapColor pcolor
-;  ]
+  import-pcolors "C:/Users/Sensonomic Admin/Dropbox/Oxford/DPhil/Sensonomic/Innovation forum/keningau_satellite.png"
+  ask patches [
+    set baseMapColor pcolor
+  ]
   ; boundaries
   gis:set-drawing-color white
   gis:draw boundaries-dataset 5.0
-  ; roads
-  ask patches gis:intersecting roads-dataset [
-    set pcolor 8
-    set road? true
-    set developed 1
-  ]
+  ; risk
+  gis:apply-raster risk-dataset risk
+;  ask patches [
+;     ifelse (risk <= 0) or (risk >= 0)
+;     [ set risk risk ]
+;     [ set risk 0 ]
+;  ]
   ; farms
   set initial-farm-capital 3
-  ask patches with [ road? = 0 ] gis:intersecting farms-dataset [
+;  ask patches with [ road? = 0 ] gis:intersecting farms-dataset [
+  ask patches with [ risk > 0 ] [
     set pcolor 57
     set farm? true
     set traversable 1
@@ -142,17 +148,21 @@ to setup-gis
     set contractDistance 999999999
     set developed 1
   ]
-  ; risk
-  gis:apply-raster risk-dataset risk
   ; Now, just to make sure it worked, we'll color each patch by its
   ; risk value.
-  let min-risk gis:minimum-of risk-dataset
-  let max-risk gis:maximum-of risk-dataset
+  set min-risk gis:minimum-of risk-dataset
+  set max-risk gis:maximum-of risk-dataset
   ask patches
   [ ; note the use of the "<= 0 or >= 0" technique to filter out
     ; "not a number" values, as discussed in the documentation.
     if (risk <= 0) or (risk >= 0)
-    [ set pcolor scale-color red risk min-risk max-risk ] ]
+    [ set pcolor scale-color red risk max-risk min-risk ] ]
+  ; roads
+  ask patches gis:intersecting roads-dataset [
+    set pcolor 8
+    set road? true
+    set developed 1
+  ]
   ; cities
 ;  ask city-labels [ die ]
 ;  foreach gis:feature-list-of cities-dataset [ [vector-feature] ->
@@ -169,21 +179,6 @@ to setup-gis
 ;      ]
 ;    ]
 ;  ]
-end
-
-to display-risk-in-patches
-  ; This is the preferred way of copying values from a raster dataset
-  ; into a patch variable: in one step, using gis:apply-raster.
-  gis:apply-raster risk-dataset risk
-  ; Now, just to make sure it worked, we'll color each patch by its
-  ; risk value.
-  let min-risk gis:minimum-of risk-dataset
-  let max-risk gis:maximum-of risk-dataset
-  ask patches
-  [ ; note the use of the "<= 0 or >= 0" technique to filter out
-    ; "not a number" values, as discussed in the documentation.
-    if (risk <= 0) or (risk >= 0)
-    [ set pcolor scale-color red risk min-risk max-risk ] ]
 end
 
 to create-roads
@@ -214,9 +209,9 @@ end
 to create-plants
   let potentialSites patches with [ road? = 0 ]
   let nextToRoad potentialSites with [ any? neighbors4 with [ road? = true ] ]
-  random-seed 41
+  random-seed 40
   ask n-of number-of-plants nextToRoad [
-    set pcolor 18
+    set pcolor 48
     set plant? true
     set farm? 0
     set currentPlantCapacity 0
@@ -416,30 +411,34 @@ to drop-off-loads
 end
 
 to find-optimal
-  set max-palmOil max [ palmOil ] of patches with [ contract? = true ]
-  set optimal-patches patches with [ ( palmOil >= optimal-proportion * max-palmOil ) and ( contract? = true ) ]
-  ask turtles with [ distanceTurtle? = false ] [
-    if contractDistance = 0 and visitedOptimal? = 0 [
-      set visitedOptimal? true
-    ]
-  ]
-  if count turtles with [ distanceTurtle? = false and visitedOptimal? = true ] = count turtles with [ distanceTurtle? = false ]
-  [
-    ask patches with [ traversable = 1 ] [
-      set contractDistance 999999999
-    ]
+  set low-risk-farms patches with [ ( contract? = true ) and ( risk <= risk-tolerance ) ]
+  ifelse ( count low-risk-farms >= 1 ) [
+    set max-palmOil max [ palmOil ] of low-risk-farms
+    set optimal-patches patches with [ ( palmOil >= optimal-proportion * max-palmOil ) and ( contract? = true ) and ( risk <= risk-tolerance ) ]
     ask turtles with [ distanceTurtle? = false ] [
-      set visitedOptimal? 0
-    ]
-    ask optimal-patches [
-      sprout 1 [
-        set distanceTurtle? true
-        set homeDistance 0
-        set hidden? true
+      if contractDistance = 0 and visitedOptimal? = 0 [
+        set visitedOptimal? true
       ]
     ]
-    repeat 10000 [ compute-contract-manhattan-distance-one-step ]
+    if count turtles with [ distanceTurtle? = false and visitedOptimal? = true ] = count turtles with [ distanceTurtle? = false ]
+    [
+      ask patches with [ traversable = 1 ] [
+        set contractDistance 999999999
+      ]
+      ask turtles with [ distanceTurtle? = false ] [
+        set visitedOptimal? 0
+      ]
+      ask optimal-patches [
+        sprout 1 [
+          set distanceTurtle? true
+          set homeDistance 0
+          set hidden? true
+        ]
+      ]
+      repeat 10000 [ compute-contract-manhattan-distance-one-step ]
+    ]
   ]
+  [ print "no farms left matching your criteria, please raise risk threshold" ]
 end
 
 to sell-oil
@@ -454,22 +453,25 @@ end
 to expand-farm
   set farm-expansion-cost 5
   ask patches with [ farm? = true ] [
-;    farms with enough capital expand to adjacent road (where trucks can pick up)
+    ;    farms with enough capital expand to adjacent road (where trucks can pick up)
     if farmCapital >= farm-expansion-cost and any? neighbors4 with [ developed = 0 ] [
       set farmCapital farmCapital - farm-expansion-cost
       ask one-of neighbors4 with [ developed = 0 ] [
-        set pcolor 57
-        set farm? true
-        set newFarm? true
-        set farmCapital 1 + random-float 3
-        set traversable 1
-        set developed 1
-        set trackDensity 0
-        let p random-float 1
-        ifelse p > 0.1 [ set contract? true ] [ set contract? false ]
-        if contract? [ set plabel "C" ]
-        if any? neighbors4 with [ traversable = 1 ] [
-          set plantDistance [ plantDistance ] of min-one-of neighbors4 with [ traversable = 1 ] [ plantDistance ] + 1
+        if ( risk > 0 ) [
+          ;        set pcolor 57
+          set pcolor scale-color red risk max-risk min-risk
+          set farm? true
+          set newFarm? true
+          set farmCapital 1 + random-float 3
+          set traversable 1
+          set developed 1
+          set trackDensity 0
+          let p random-float 1
+          ifelse p > 0.1 [ set contract? true ] [ set contract? false ]
+          if contract? [ set plabel "C" ]
+          if any? neighbors4 with [ traversable = 1 ] [
+            set plantDistance [ plantDistance ] of min-one-of neighbors4 with [ traversable = 1 ] [ plantDistance ] + 1
+          ]
         ]
       ]
     ]
@@ -514,8 +516,8 @@ to color-roads
 end
 
 to color-plants
-  let light-red-netlogo extract-rgb 18
-  let dark-red-netlogo extract-rgb 14
+  let light-red-netlogo extract-rgb 48
+  let dark-red-netlogo extract-rgb 44
   ask patches with [ plant? = true ] [
     set pcolor palette:scale-gradient ( list light-red-netlogo dark-red-netlogo ) currentPlantCapacity 0 max-plant-capacity
   ]
@@ -866,7 +868,7 @@ number-of-plants
 number-of-plants
 1
 50
-30.0
+5.0
 1
 1
 NIL
@@ -1121,6 +1123,21 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "plot count patches with [ farm? = true ]"
+
+SLIDER
+224
+555
+403
+588
+risk-tolerance
+risk-tolerance
+0.45
+1
+1.0
+0.05
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -1464,7 +1481,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.1
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
